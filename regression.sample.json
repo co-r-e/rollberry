@@ -1,0 +1,22 @@
+{
+  "outputDir": "./artifacts/regression",
+  "cases": [
+    {
+      "name": "local-homepage",
+      "url": "http://localhost:3000",
+      "viewport": "1440x900",
+      "fps": 60,
+      "duration": "auto",
+      "waitFor": "selector:body",
+      "hideSelectors": ["#cookie-banner", ".intercom-lightweight-app"]
+    },
+    {
+      "name": "playwright-docs",
+      "url": "https://playwright.dev/",
+      "viewport": "1440x900",
+      "fps": 60,
+      "duration": 8,
+      "waitFor": "selector:main"
+    }
+  ]
+}

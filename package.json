@@ -1,0 +1,38 @@
+{
+  "name": "rollberry",
+  "version": "0.1.0",
+  "description": "CLI to capture smooth top-to-bottom scroll videos from web pages, including localhost URLs.",
+  "type": "module",
+  "packageManager": "pnpm@10.15.0",
+  "files": [
+    "dist",
+    "README.md",
+    "regression.sample.json"
+  ],
+  "bin": {
+    "rollberry": "dist/cli.js"
+  },
+  "engines": {
+    "node": ">=24.12.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "check": "biome check . && tsc -p tsconfig.json --noEmit",
+    "dev": "tsx src/cli.ts",
+    "browsers:install": "playwright install chromium",
+    "prepack": "npm run build",
+    "regression": "tsx scripts/run-regression-suite.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "playwright": "1.58.2"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.7",
+    "@types/node": "25.5.0",
+    "selfsigned": "5.5.0",
+    "tsx": "4.21.0",
+    "typescript": "5.9.3",
+    "vitest": "4.1.0"
+  }
+}
