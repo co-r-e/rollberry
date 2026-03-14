@@ -1,11 +1,30 @@
 {
   "name": "rollberry",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "CLI to capture smooth top-to-bottom scroll videos from web pages, including localhost URLs.",
   "type": "module",
   "packageManager": "pnpm@10.15.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/co-r-e/rollberry.git"
+  },
+  "homepage": "https://github.com/co-r-e/rollberry#readme",
+  "bugs": {
+    "url": "https://github.com/co-r-e/rollberry/issues"
+  },
+  "keywords": [
+    "cli",
+    "playwright",
+    "scroll",
+    "video",
+    "automation",
+    "localhost"
+  ],
   "files": [
     "dist",
+    "CHANGELOG.md",
+    "LICENSE",
     "README.md",
     "regression.sample.json"
   ],

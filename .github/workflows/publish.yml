@@ -1,0 +1,54 @@
+name: Publish To npm
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Activate pnpm
+        run: corepack prepare pnpm@10.15.0 --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check package version matches tag
+        run: |
+          node --eval '
+          const { version } = require("./package.json");
+          const tag = process.env.GITHUB_REF_NAME;
+          if (version !== tag.replace(/^v/, "")) {
+            console.error(`package.json version ${version} does not match tag ${tag}`);
+            process.exit(1);
+          }'
+
+      - name: Run checks
+        run: pnpm check
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Publish package
+        run: npm publish

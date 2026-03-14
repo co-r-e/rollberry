@@ -1,21 +1,17 @@
 # Rollberry
 
-Rollberry は、指定した Web ページを上から下まで滑らかにスクロールさせた MP4 を生成する CLI です。`localhost`、`127.0.0.1`、`[::1]` の開発中 URL にも対応します。
+Rollberry is an MIT-licensed open source CLI for turning a web page into a
+smooth top-to-bottom scroll video. It is built for real browser capture, works
+with normal URLs and `localhost`, and is published for direct `npx` usage.
 
-## Requirements
+## Quick Start
+
+Requirements:
 
 - Node.js `24.12.0+`
-- `ffmpeg` / `ffprobe`
-- macOS を優先サポート
+- `ffmpeg` and `ffprobe` available on `PATH`
 
-## Setup
-
-```bash
-corepack pnpm install
-corepack pnpm exec playwright install chromium
-```
-
-## Usage
+Install nothing globally. Run it directly:
 
 ```bash
 npx rollberry capture http://localhost:3000 \
@@ -27,55 +23,137 @@ npx rollberry capture http://localhost:3000 \
   --hide-selector '#cookie-banner'
 ```
 
-リポジトリ内で開発実行する場合は次です。
+On the first run, if Playwright Chromium is missing, Rollberry installs it
+automatically. `ffmpeg` is not auto-installed.
+
+## What You Get
+
+Each run writes:
+
+- `video.mp4`: the rendered capture
+- `video.manifest.json`: environment, options, result, and failure details
+- `video.log.jsonl`: structured operational logs
+
+You can override the sidecar paths with `--manifest` and `--log-file`.
+
+## Common Examples
+
+Capture a development site:
 
 ```bash
-corepack pnpm dev -- capture http://localhost:3000 \
-  --out ./artifacts/demo.mp4 \
-  --viewport 1440x900 \
-  --fps 60 \
-  --duration auto \
-  --wait-for selector:body \
-  --hide-selector '#cookie-banner'
+npx rollberry capture http://localhost:3000 --out ./artifacts/local.mp4
 ```
 
-ビルド後は次でも実行できます。
+Capture a public site at a fixed duration:
 
 ```bash
-node dist/cli.js capture https://example.com --out ./artifacts/example.mp4
+npx rollberry capture https://playwright.dev \
+  --out ./artifacts/playwright.mp4 \
+  --duration 8 \
+  --fps 60
 ```
 
-初回の `npx rollberry ...` 実行時に Chromium が未導入なら、Rollberry が Playwright Chromium を自動インストールします。`ffmpeg` / `ffprobe` は自動導入しないので、事前に PATH 上で使える必要があります。
+Wait for a selector and hide overlays:
 
-## Sidecar Outputs
+```bash
+npx rollberry capture https://example.com \
+  --wait-for selector:main \
+  --hide-selector '#cookie-banner' \
+  --hide-selector '.intercom-lightweight-app'
+```
 
-各キャプチャのたびに次を出力します。
+Dump raw frames for debugging:
 
-- `video.mp4`: 本体動画
-- `video.manifest.json`: 実行結果、環境、オプション、失敗内容
-- `video.log.jsonl`: 1 行 1 JSON の運用ログ
+```bash
+npx rollberry capture http://localhost:3000 \
+  --out ./artifacts/debug.mp4 \
+  --debug-frames-dir ./artifacts/debug-frames
+```
 
-`--manifest` と `--log-file` で出力先を個別に上書きできます。
+## CLI Options
+
+```text
+rollberry capture <url>
+
+--out <file>                Output MP4 path
+--viewport <WxH>            Viewport size, example: 1440x900
+--fps <n>                   Frames per second
+--duration <seconds|auto>   Explicit seconds or auto
+--motion <curve>            ease-in-out-sine | linear
+--timeout <ms>              Navigation timeout
+--wait-for <mode>           load | selector:<css> | ms:<n>
+--hide-selector <css>       Hide CSS selector before capture
+--debug-frames-dir <dir>    Save raw PNG frames
+--manifest <file>           Manifest JSON output path
+--log-file <file>           Log JSONL output path
+```
 
 ## Localhost Behavior
 
-- `http://localhost:*`、`https://localhost:*`、`http://127.0.0.1:*`、`http://[::1]:*` を許可
-- `localhost` 系では接続拒否を `--timeout` まで 500ms 間隔で再試行
-- `https://localhost` 系では自己署名証明書を許可
-- dev server の自動起動はしません。URL は事前に起動済みである前提です
+- Supports `http://localhost:*`, `https://localhost:*`,
+  `http://127.0.0.1:*`, and `http://[::1]:*`
+- Retries connection-refused errors until `--timeout`
+- Accepts self-signed certificates for localhost targets only
+- Does not start your dev server for you
 
-## Recommended Operational Flow
+## Troubleshooting
 
-1. `regression.sample.json` をコピーして自分たちの `regression.sites.json` を作る
-2. 重要な 10〜20 URL を登録する
-3. リリース前に `corepack pnpm regression -- --config ./regression.sites.json` を実行する
-4. `artifacts/regression/summary.json` と各 manifest を確認する
-
-## Commands
+If `ffmpeg` is missing:
 
 ```bash
+brew install ffmpeg
+```
+
+If capture fails, inspect:
+
+- `*.manifest.json` for final status and error details
+- `*.log.jsonl` for per-step structured logs
+
+If a site keeps shifting during capture:
+
+- wait for a stable selector with `--wait-for selector:...`
+- hide chat widgets, cookie banners, and sticky overlays with `--hide-selector`
+- keep dynamic dev-only overlays out of the page when possible
+
+## Local Development
+
+```bash
+corepack pnpm install
+corepack pnpm exec playwright install chromium
 corepack pnpm check
 corepack pnpm test
 corepack pnpm build
+```
+
+Run from the repository:
+
+```bash
+corepack pnpm dev -- capture http://localhost:3000 --out ./artifacts/demo.mp4
+```
+
+Run the regression suite:
+
+```bash
+cp regression.sample.json regression.sites.json
 corepack pnpm regression -- --config ./regression.sites.json
 ```
+
+## Release Flow
+
+Rollberry stays on the `v0.x.x` line for now.
+
+1. Update `package.json` version and `CHANGELOG.md`
+2. Commit the release prep
+3. Create an annotated tag like `git tag -a v0.1.1 -m "Release v0.1.1"`
+4. Push `main` and the tag to GitHub
+5. GitHub Actions publishes to npm via trusted publishing
+
+Trusted publishing setup expected by this repo:
+
+- GitHub repository: `co-r-e/rollberry`
+- Workflow filename: `.github/workflows/publish.yml`
+- Trigger: push tag `v*`
+
+## License
+
+[MIT](./LICENSE)
