@@ -153,6 +153,8 @@ Trusted publishing setup expected by this repo:
 - GitHub repository: `co-r-e/rollberry`
 - Workflow filename: `.github/workflows/publish.yml`
 - Trigger: push tag `v*`
+- In npm package settings, add a trusted publisher that matches the repository
+  and workflow above
 
 ## License
 
