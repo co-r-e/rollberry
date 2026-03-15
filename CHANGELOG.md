@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog and the project stays on the `v0.x.x`
 line until the CLI surface and capture behavior settle.
 
+## [0.1.3] - 2026-03-15
+
+### Changed
+
+- README now includes a dedicated `Using With npx` section with version-pinned
+  examples and common usage patterns.
+
 ## [0.1.2] - 2026-03-15
 
 ### Added

@@ -28,6 +28,46 @@ npx rollberry capture http://localhost:3000 \
 On the first run, if Playwright Chromium is missing, Rollberry installs it
 automatically. `ffmpeg` is not auto-installed.
 
+## Using With npx
+
+The normal way to run Rollberry is `npx`.
+
+Use the latest published version:
+
+```bash
+npx rollberry capture http://localhost:3000 --out ./artifacts/demo.mp4
+```
+
+Pin a specific version:
+
+```bash
+npx rollberry@0.1.2 capture http://localhost:3000 --out ./artifacts/demo.mp4
+```
+
+Capture a local development server:
+
+```bash
+npx rollberry capture http://localhost:3000 \
+  --out ./artifacts/local.mp4 \
+  --wait-for selector:body
+```
+
+Capture a public page:
+
+```bash
+npx rollberry capture https://playwright.dev \
+  --out ./artifacts/playwright.mp4 \
+  --duration 8
+```
+
+Notes:
+
+- `npx` downloads the published CLI package automatically
+- on the first run, Rollberry installs Playwright Chromium if needed
+- `ffmpeg` and `ffprobe` must already be available on your machine
+- if you want reproducible automation, pin the package version with
+  `npx rollberry@<version> ...`
+
 ## What You Get
 
 Each run writes:
