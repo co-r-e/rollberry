@@ -4,6 +4,8 @@ Rollberry is an MIT-licensed open source CLI for turning a web page into a
 smooth top-to-bottom scroll video. It is built for real browser capture, works
 with normal URLs and `localhost`, and is published for direct `npx` usage.
 
+Maintained by CORe Inc.
+
 ## Quick Start
 
 Requirements:
@@ -114,6 +116,12 @@ If a site keeps shifting during capture:
 - wait for a stable selector with `--wait-for selector:...`
 - hide chat widgets, cookie banners, and sticky overlays with `--hide-selector`
 - keep dynamic dev-only overlays out of the page when possible
+
+## Support and Contact
+
+- General contact: https://co-r-e.com/contact
+- Security issues: see [SECURITY.md](./SECURITY.md)
+- Contribution guide: see [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 ## Local Development
 

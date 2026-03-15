@@ -4,6 +4,7 @@
   "description": "CLI to capture smooth top-to-bottom scroll videos from web pages, including localhost URLs.",
   "type": "module",
   "packageManager": "pnpm@10.15.0",
+  "author": "CORe Inc.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -24,8 +25,10 @@
   "files": [
     "dist",
     "CHANGELOG.md",
+    "CONTRIBUTING.md",
     "LICENSE",
     "README.md",
+    "SECURITY.md",
     "regression.sample.json"
   ],
   "bin": {

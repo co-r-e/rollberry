@@ -1,0 +1,57 @@
+name: Bug report
+description: Report a reproducible problem in Rollberry.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug.
+
+        If this is a security issue, do not use this form. Please use:
+        https://co-r-e.com/contact
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Published package version or commit SHA.
+      placeholder: 0.1.1
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Node.js version, and install method.
+      placeholder: macOS 15, Node 24.12.0, npx
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command
+      description: The exact command you ran.
+      render: bash
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or manifest excerpts
+      description: Paste anything useful from `*.log.jsonl` or `*.manifest.json`.
+      render: text
+    validations:
+      required: false

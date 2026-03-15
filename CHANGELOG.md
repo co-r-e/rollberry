@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog and the project stays on the `v0.x.x`
 line until the CLI surface and capture behavior settle.
 
+## [Unreleased]
+
+### Added
+
+- `SECURITY.md`, `CONTRIBUTING.md`, GitHub issue forms, and a pull request
+  template.
+- Contact guidance pointing users to https://co-r-e.com/contact where private
+  contact is required.
+
+### Changed
+
+- MIT copyright holder is now `CORe Inc.`.
+- Branch protection policy now also covers `develop` and `release/*`, with
+  `mokuwaki` as the only bypass user.
+
 ## [0.1.1] - 2026-03-15
 
 ### Added

@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security report or private inquiry
+    url: https://co-r-e.com/contact
+    about: Use this for security issues or private contact instead of a public issue.
