@@ -17,6 +17,11 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v5
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+
       - name: Set up Node.js
         uses: actions/setup-node@v5
         with:
@@ -24,12 +29,6 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           cache: 'pnpm'
           cache-dependency-path: 'pnpm-lock.yaml'
-
-      - name: Enable Corepack
-        run: corepack enable
-
-      - name: Activate pnpm
-        run: corepack prepare pnpm@10.15.0 --activate
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
