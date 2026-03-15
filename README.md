@@ -152,7 +152,7 @@ Rollberry stays on the `v0.x.x` line for now.
 
 1. Update `package.json` version and `CHANGELOG.md`
 2. Commit the release prep
-3. Create an annotated tag like `git tag -a v0.1.1 -m "Release v0.1.1"`
+3. Create an annotated tag like `git tag -a v0.1.2 -m "Release v0.1.2"`
 4. Push `main` and the tag to GitHub
 5. GitHub Actions publishes to npm via trusted publishing
 
