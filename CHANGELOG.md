@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog and the project stays on the `v0.x.x`
 line until the CLI surface and capture behavior settle.
 
+## [0.1.4] - 2026-03-15
+
+### Changed
+
+- Reduced default auto-scroll speed from 1800 px/s to 800 px/s for better
+  readability during capture.
+
 ## [0.1.3] - 2026-03-15
 
 ### Changed
