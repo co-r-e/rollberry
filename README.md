@@ -1,8 +1,9 @@
 # Rollberry
 
-Rollberry is an MIT-licensed open source CLI for turning a web page into a
-smooth top-to-bottom scroll video. It is built for real browser capture, works
-with normal URLs and `localhost`, and is published for direct `npx` usage.
+Rollberry is an MIT-licensed open source CLI for turning web pages into
+smooth top-to-bottom scroll videos. It captures one or more URLs into a single
+MP4. It is built for real browser capture, works with normal URLs and
+`localhost`, and is published for direct `npx` usage.
 
 Maintained by CORe Inc.
 
@@ -104,6 +105,26 @@ npx rollberry capture https://example.com \
   --hide-selector '.intercom-lightweight-app'
 ```
 
+Capture multiple pages into a single video:
+
+```bash
+npx rollberry capture \
+  https://example.com \
+  https://example.com/about \
+  https://example.com/contact \
+  --out ./artifacts/multi-page.mp4
+```
+
+Add a pause between pages (the last frame of each page is held):
+
+```bash
+npx rollberry capture \
+  https://example.com \
+  https://example.com/about \
+  --page-gap 1.5 \
+  --out ./artifacts/with-gap.mp4
+```
+
 Dump raw frames for debugging:
 
 ```bash
@@ -115,7 +136,7 @@ npx rollberry capture http://localhost:3000 \
 ## CLI Options
 
 ```text
-rollberry capture <url>
+rollberry capture <url...>
 
 --out <file>                Output MP4 path
 --viewport <WxH>            Viewport size, example: 1440x900
@@ -125,6 +146,7 @@ rollberry capture <url>
 --timeout <ms>              Navigation timeout
 --wait-for <mode>           load | selector:<css> | ms:<n>
 --hide-selector <css>       Hide CSS selector before capture
+--page-gap <seconds>        Pause between pages (default: 0)
 --debug-frames-dir <dir>    Save raw PNG frames
 --manifest <file>           Manifest JSON output path
 --log-file <file>           Log JSONL output path
