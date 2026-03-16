@@ -4,6 +4,7 @@ import { parseArgs } from 'node:util';
 import type {
   CaptureOptions,
   MotionCurve,
+  NonEmptyArray,
   WaitForCondition,
 } from './capture/types.js';
 import { parseCaptureUrl } from './capture/utils.js';
@@ -68,6 +69,9 @@ export function parseCliArgs(argv = process.argv.slice(2)): CaptureOptions {
       'debug-frames-dir': {
         type: 'string',
       },
+      'page-gap': {
+        type: 'string',
+      },
       manifest: {
         type: 'string',
       },
@@ -78,10 +82,13 @@ export function parseCliArgs(argv = process.argv.slice(2)): CaptureOptions {
     strict: true,
   });
 
-  const rawUrl = parsed.positionals[0];
-  if (!rawUrl) {
+  if (parsed.positionals.length === 0) {
     throw new CliError('capture にはURLが必要です。', true);
   }
+
+  const urls = parsed.positionals.map((raw) =>
+    parseWithCliError(raw, parseCaptureUrl),
+  );
 
   const durationOption = parsed.values.duration ?? DEFAULT_DURATION;
   if (durationOption !== 'auto' && Number.isNaN(Number(durationOption))) {
@@ -92,8 +99,13 @@ export function parseCliArgs(argv = process.argv.slice(2)): CaptureOptions {
 
   const outPath = resolveOutPath(parsed.values.out ?? DEFAULT_OUT_FILE);
 
+  const pageGapSeconds = parseWithCliError(
+    parsed.values['page-gap'] ?? '0',
+    parseNonNegativeNumber,
+  );
+
   return {
-    url: parseWithCliError(rawUrl, parseCaptureUrl),
+    urls: toNonEmptyArray(urls),
     outPath,
     manifestPath: parsed.values.manifest
       ? resolveOutPath(parsed.values.manifest)
@@ -126,16 +138,25 @@ export function parseCliArgs(argv = process.argv.slice(2)): CaptureOptions {
       parseWaitFor,
     ),
     hideSelectors: parsed.values['hide-selector'] ?? [],
+    pageGapSeconds,
     debugFramesDir: parsed.values['debug-frames-dir']
       ? resolveOutPath(parsed.values['debug-frames-dir'])
       : undefined,
   };
 }
 
+function toNonEmptyArray<T>(items: T[]): NonEmptyArray<T> {
+  if (items.length === 0) {
+    throw new CliError('capture にはURLが必要です。', true);
+  }
+
+  return items as NonEmptyArray<T>;
+}
+
 export function formatUsage(): string {
   return [
     'Usage:',
-    '  rollberry capture <url> [options]',
+    '  rollberry capture <url...> [options]',
     '',
     'Options:',
     '  --out <file>                Output MP4 path (default: ./rollberry.mp4)',
@@ -147,6 +168,7 @@ export function formatUsage(): string {
     '  --wait-for <mode>          load | selector:<css> | ms:<n>',
     '  --hide-selector <css>      Hide CSS selector before capture',
     '  --debug-frames-dir <dir>   Save raw PNG frames for debugging',
+    '  --page-gap <seconds>       Pause between pages (default: 0)',
     '  --manifest <file>          Manifest JSON path (default: <out>.manifest.json)',
     '  --log-file <file>          Log JSONL path (default: <out>.log.jsonl)',
   ].join('\n');
@@ -214,6 +236,15 @@ function parsePositiveNumber(rawValue: string): number {
   const value = Number(rawValue);
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`正の数値を指定してください: ${rawValue}`);
+  }
+
+  return value;
+}
+
+function parseNonNegativeNumber(rawValue: string): number {
+  const value = Number(rawValue);
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error(`0以上の数値を指定してください: ${rawValue}`);
   }
 
   return value;

@@ -1,4 +1,5 @@
 export type MotionCurve = 'ease-in-out-sine' | 'linear';
+export type NonEmptyArray<T> = [T, ...T[]];
 
 export type WaitForCondition =
   | { kind: 'load' }
@@ -11,7 +12,7 @@ export interface Viewport {
 }
 
 export interface CaptureOptions {
-  url: URL;
+  urls: NonEmptyArray<URL>;
   outPath: string;
   manifestPath: string;
   logFilePath: string;
@@ -22,6 +23,7 @@ export interface CaptureOptions {
   timeoutMs: number;
   waitFor: WaitForCondition;
   hideSelectors: string[];
+  pageGapSeconds: number;
   debugFramesDir?: string;
 }
 
@@ -39,11 +41,19 @@ export interface PreflightResult extends PageMetrics {
   truncated: boolean;
 }
 
+export interface PageCaptureResult {
+  url: string;
+  frameCount: number;
+  durationSeconds: number;
+  scrollHeight: number;
+  truncated: boolean;
+}
+
 export interface CaptureResult {
   outPath: string;
   frameCount: number;
   durationSeconds: number;
-  finalScrollHeight: number;
+  pages: PageCaptureResult[];
   truncated: boolean;
 }
 
@@ -54,7 +64,7 @@ export interface CaptureRunResult {
 }
 
 export interface CaptureManifest {
-  schemaVersion: 1;
+  schemaVersion: 2;
   status: 'succeeded' | 'failed';
   startedAt: string;
   finishedAt: string;
@@ -65,7 +75,7 @@ export interface CaptureManifest {
     arch: string;
   };
   options: {
-    url: string;
+    urls: string[];
     viewport: Viewport;
     fps: number;
     duration: number | 'auto';
@@ -73,6 +83,7 @@ export interface CaptureManifest {
     timeoutMs: number;
     waitFor: WaitForCondition;
     hideSelectors: string[];
+    pageGapSeconds: number;
   };
   artifacts: {
     videoPath: string;

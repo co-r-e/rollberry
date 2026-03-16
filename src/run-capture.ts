@@ -7,20 +7,14 @@ import type {
   CaptureOptions,
   CaptureRunResult,
 } from './capture/types.js';
-import { ensureParentDirectory } from './capture/utils.js';
-
 export async function runCaptureCommand(
   options: CaptureOptions,
 ): Promise<CaptureRunResult> {
-  await ensureParentDirectory(options.outPath);
-  await ensureParentDirectory(options.manifestPath);
-  await ensureParentDirectory(options.logFilePath);
-
   const logger = createCaptureLogger(options.logFilePath);
   const startedAt = new Date();
 
   await logger.info('capture.start', 'Capture started', {
-    url: options.url.toString(),
+    urls: options.urls.map((u) => u.toString()),
     outPath: options.outPath,
     manifestPath: options.manifestPath,
     logFilePath: options.logFilePath,
@@ -29,7 +23,9 @@ export async function runCaptureCommand(
   try {
     const capture = await captureVideo(options, logger);
     const finishedAt = new Date();
-    const warnings = capture.truncated ? ['scroll_height_truncated'] : [];
+    const warnings = capture.truncated
+      ? ['scroll_height_truncated']
+      : [];
 
     const manifest = buildManifest({
       status: 'succeeded',
@@ -100,7 +96,7 @@ function buildManifest(input: {
   error?: unknown;
 }): CaptureManifest {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     status: input.status,
     startedAt: input.startedAt.toISOString(),
     finishedAt: input.finishedAt.toISOString(),
@@ -111,7 +107,7 @@ function buildManifest(input: {
       arch: process.arch,
     },
     options: {
-      url: input.options.url.toString(),
+      urls: input.options.urls.map((u) => u.toString()),
       viewport: input.options.viewport,
       fps: input.options.fps,
       duration: input.options.duration,
@@ -119,6 +115,7 @@ function buildManifest(input: {
       timeoutMs: input.options.timeoutMs,
       waitFor: input.options.waitFor,
       hideSelectors: input.options.hideSelectors,
+      pageGapSeconds: input.options.pageGapSeconds,
     },
     artifacts: {
       videoPath: input.options.outPath,

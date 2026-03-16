@@ -27,7 +27,7 @@ describe('parseCliArgs', () => {
       'artifacts/frames',
     ]);
 
-    expect(options.url.toString()).toBe('https://localhost:3000/');
+    expect(options.urls[0]!.toString()).toBe('https://localhost:3000/');
     expect(options.outPath).toMatch(/artifacts\/demo\.mp4$/u);
     expect(options.manifestPath).toMatch(/artifacts\/demo\.manifest\.json$/u);
     expect(options.logFilePath).toMatch(/artifacts\/demo\.log\.jsonl$/u);
@@ -40,6 +40,7 @@ describe('parseCliArgs', () => {
       selector: '#app',
     });
     expect(options.hideSelectors).toEqual(['#cookie-banner', '.chat-widget']);
+    expect(options.pageGapSeconds).toBe(0);
     expect(options.debugFramesDir).toMatch(/artifacts\/frames$/u);
   });
 
@@ -47,6 +48,42 @@ describe('parseCliArgs', () => {
     expect(() => parseCliArgs(['capture', 'file:///tmp/demo.html'])).toThrow(
       CliError,
     );
+  });
+
+  it('parses multiple URLs', () => {
+    const options = parseCliArgs([
+      'capture',
+      'https://example.com',
+      'https://example.com/about',
+      'https://example.com/contact',
+    ]);
+
+    expect(options.urls).toHaveLength(3);
+    expect(options.urls[0]!.toString()).toBe('https://example.com/');
+    expect(options.urls[1]!.toString()).toBe('https://example.com/about');
+    expect(options.urls[2]!.toString()).toBe('https://example.com/contact');
+  });
+
+  it('parses --page-gap option', () => {
+    const options = parseCliArgs([
+      'capture',
+      'https://example.com',
+      'https://example.com/about',
+      '--page-gap',
+      '1.5',
+    ]);
+
+    expect(options.pageGapSeconds).toBe(1.5);
+  });
+
+  it('rejects negative --page-gap', () => {
+    expect(() =>
+      parseCliArgs([
+        'capture',
+        'https://example.com',
+        '--page-gap=-1',
+      ]),
+    ).toThrow(CliError);
   });
 
   it('allows overriding manifest and log file paths', () => {

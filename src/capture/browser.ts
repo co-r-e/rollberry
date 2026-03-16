@@ -22,7 +22,7 @@ export async function openBrowserSession(
   });
   const context = await browser.newContext({
     viewport: options.viewport,
-    ignoreHTTPSErrors: isLocalUrl(options.url),
+    ignoreHTTPSErrors: options.urls.some(isLocalUrl),
   });
   const page = await context.newPage();
 
@@ -37,16 +37,17 @@ export async function openBrowserSession(
 
 export async function navigateWithRetry(
   page: Page,
-  options: CaptureOptions,
+  url: URL,
+  timeoutMs: number,
 ): Promise<void> {
-  const deadline = Date.now() + options.timeoutMs;
-  const canRetry = isLocalUrl(options.url);
+  const deadline = Date.now() + timeoutMs;
+  const canRetry = isLocalUrl(url);
 
   while (true) {
     const remainingMs = Math.max(1, deadline - Date.now());
 
     try {
-      await page.goto(options.url.toString(), {
+      await page.goto(url.toString(), {
         waitUntil: 'domcontentloaded',
         timeout: remainingMs,
       });
