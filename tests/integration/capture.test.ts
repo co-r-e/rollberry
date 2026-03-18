@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { promisify } from 'node:util';
@@ -45,7 +45,7 @@ describe('captureVideo', () => {
     expect(result.outPath).toBe(join(workingDir, 'http.mp4'));
     expect(result.frameCount).toBeGreaterThan(0);
     expect(result.pages).toHaveLength(1);
-    expect(result.pages[0]!.scrollHeight).toBeGreaterThan(2_880);
+    expect(result.pages[0]?.scrollHeight).toBeGreaterThan(2_880);
 
     const probe = await ffprobeJson(result.outPath);
     expect(probe.streams[0]?.codec_name).toBe('h264');
@@ -122,10 +122,10 @@ describe('captureVideo', () => {
     );
 
     expect(result.pages).toHaveLength(2);
-    expect(result.pages[0]!.url).toBe(url1.toString());
-    expect(result.pages[1]!.url).toBe(url2.toString());
+    expect(result.pages[0]?.url).toBe(url1.toString());
+    expect(result.pages[1]?.url).toBe(url2.toString());
     expect(result.frameCount).toBe(
-      result.pages[0]!.frameCount + result.pages[1]!.frameCount,
+      result.pages[0]?.frameCount + result.pages[1]?.frameCount,
     );
 
     const probe = await ffprobeJson(result.outPath);
@@ -158,17 +158,17 @@ describe('captureVideo', () => {
 
     const expectedGapFrames = Math.round(fps * gapSeconds);
     expect(result.frameCount).toBe(
-      result.pages[0]!.frameCount +
+      result.pages[0]?.frameCount +
         expectedGapFrames +
-        result.pages[1]!.frameCount,
+        result.pages[1]?.frameCount,
     );
 
     const probe = await ffprobeJson(result.outPath);
     expect(probe.streams[0]?.codec_name).toBe('h264');
     expect(Number(probe.streams[0]?.nb_read_frames)).toBe(result.frameCount);
 
-    const debugFrames = (await readdir(join(workingDir, 'frames'))).filter((file) =>
-      file.endsWith('.png'),
+    const debugFrames = (await readdir(join(workingDir, 'frames'))).filter(
+      (file) => file.endsWith('.png'),
     );
     expect(debugFrames).toHaveLength(result.frameCount);
   });

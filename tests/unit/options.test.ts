@@ -27,7 +27,7 @@ describe('parseCliArgs', () => {
       'artifacts/frames',
     ]);
 
-    expect(options.urls[0]!.toString()).toBe('https://localhost:3000/');
+    expect(options.urls[0]?.toString()).toBe('https://localhost:3000/');
     expect(options.outPath).toMatch(/artifacts\/demo\.mp4$/u);
     expect(options.manifestPath).toMatch(/artifacts\/demo\.manifest\.json$/u);
     expect(options.logFilePath).toMatch(/artifacts\/demo\.log\.jsonl$/u);
@@ -59,9 +59,9 @@ describe('parseCliArgs', () => {
     ]);
 
     expect(options.urls).toHaveLength(3);
-    expect(options.urls[0]!.toString()).toBe('https://example.com/');
-    expect(options.urls[1]!.toString()).toBe('https://example.com/about');
-    expect(options.urls[2]!.toString()).toBe('https://example.com/contact');
+    expect(options.urls[0]?.toString()).toBe('https://example.com/');
+    expect(options.urls[1]?.toString()).toBe('https://example.com/about');
+    expect(options.urls[2]?.toString()).toBe('https://example.com/contact');
   });
 
   it('parses --page-gap option', () => {
@@ -78,11 +78,7 @@ describe('parseCliArgs', () => {
 
   it('rejects negative --page-gap', () => {
     expect(() =>
-      parseCliArgs([
-        'capture',
-        'https://example.com',
-        '--page-gap=-1',
-      ]),
+      parseCliArgs(['capture', 'https://example.com', '--page-gap=-1']),
     ).toThrow(CliError);
   });
 
