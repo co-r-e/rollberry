@@ -178,7 +178,10 @@ function renderFixtureHtml(): string {
 
 function renderFixturePage(config: FixturePageConfig): string {
   const sections = config.sections
-    .map((s) => `    <section class="panel"><${s.tag}>${s.text}</${s.tag}></section>`)
+    .map(
+      (s) =>
+        `    <section class="panel"><${s.tag}>${s.text}</${s.tag}></section>`,
+    )
     .join('\n');
 
   return `<!doctype html>

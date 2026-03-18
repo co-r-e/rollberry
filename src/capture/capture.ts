@@ -141,13 +141,17 @@ async function capturePageFrames(input: {
   });
   const durationSeconds = frames.length / options.fps;
 
-  await logger.info('render.start', `Rendering frames for page ${urlIndex + 1}`, {
-    frameCount: frames.length,
-    fps: options.fps,
-    durationSeconds,
-    maxScroll: preflight.maxScroll,
-    url: url.toString(),
-  });
+  await logger.info(
+    'render.start',
+    `Rendering frames for page ${urlIndex + 1}`,
+    {
+      frameCount: frames.length,
+      fps: options.fps,
+      durationSeconds,
+      maxScroll: preflight.maxScroll,
+      url: url.toString(),
+    },
+  );
 
   if (preflight.truncated) {
     await logger.warn(
@@ -217,7 +221,8 @@ async function writeGapFrames(input: {
   debugFramesDir?: string;
   frameOffset: number;
 }): Promise<number> {
-  const { encoder, frame, fps, gapSeconds, debugFramesDir, frameOffset } = input;
+  const { encoder, frame, fps, gapSeconds, debugFramesDir, frameOffset } =
+    input;
   const gapFrameCount = Math.round(fps * gapSeconds);
 
   if (gapFrameCount <= 0) {

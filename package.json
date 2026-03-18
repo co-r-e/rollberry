@@ -1,6 +1,6 @@
 {
   "name": "rollberry",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "CLI to capture smooth top-to-bottom scroll videos from web pages, including localhost URLs.",
   "type": "module",
   "packageManager": "pnpm@10.15.0",

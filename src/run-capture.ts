@@ -23,9 +23,7 @@ export async function runCaptureCommand(
   try {
     const capture = await captureVideo(options, logger);
     const finishedAt = new Date();
-    const warnings = capture.truncated
-      ? ['scroll_height_truncated']
-      : [];
+    const warnings = capture.truncated ? ['scroll_height_truncated'] : [];
 
     const manifest = buildManifest({
       status: 'succeeded',

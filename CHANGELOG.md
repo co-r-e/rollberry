@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog and the project stays on the `v0.x.x`
 line until the CLI surface and capture behavior settle.
 
-## [0.1.7] - 2026-03-19
+## [0.1.8] - 2026-03-19
 
 ### Added
 
