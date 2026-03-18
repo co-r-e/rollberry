@@ -5,13 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog and the project stays on the `v0.x.x`
 line until the CLI surface and capture behavior settle.
 
-## [0.1.5] - 2026-03-18
+## [0.1.6] - 2026-03-19
+
+### Added
+
+- Multi-page capture support.
 
 ### Changed
 
 - Reduced default auto-scroll speed from 1800 px/s to 800 px/s for better
   readability during capture.
-- Republished under new maintainer account.
+- GitHub Actions publish workflow now uses token-based authentication.
 
 ## [0.1.3] - 2026-03-15
 
