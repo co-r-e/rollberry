@@ -29,7 +29,7 @@ export async function ensureChromiumInstalled(
 
   if (!(await hasExecutable(executablePath))) {
     throw new Error(
-      `Chromium のインストール後も実行ファイルが見つかりません: ${executablePath}`,
+      `Chromium executable not found after installation: ${executablePath}`,
     );
   }
 

@@ -65,10 +65,7 @@ export async function createVideoEncoder(options: {
 
       const stdin = ffmpeg.stdin;
       if (stdin.destroyed) {
-        throw createEncoderError(
-          new Error('FFmpeg の標準入力が閉じています。'),
-          stderr,
-        );
+        throw createEncoderError(new Error('FFmpeg stdin is closed.'), stderr);
       }
 
       await new Promise<void>((resolve, reject) => {
@@ -93,7 +90,7 @@ export async function createVideoEncoder(options: {
       if (exitCode !== 0) {
         throw createEncoderError(
           new Error(
-            `FFmpeg が異常終了しました (exit code: ${exitCode ?? 'null'})`,
+            `FFmpeg exited with error (exit code: ${exitCode ?? 'null'})`,
           ),
           stderr,
         );
@@ -104,9 +101,7 @@ export async function createVideoEncoder(options: {
 
 function createEncoderError(error: Error, stderr: string): Error {
   if ('code' in error && error.code === 'ENOENT') {
-    return new Error(
-      'FFmpeg が見つかりません。PATH に ffmpeg を追加してください。',
-    );
+    return new Error('FFmpeg not found. Please add ffmpeg to your PATH.');
   }
 
   const detail = stderr.trim();

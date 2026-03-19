@@ -24,7 +24,7 @@ export async function captureVideo(
   logger: CaptureLogger,
 ): Promise<CaptureResult> {
   if (options.urls.length === 0) {
-    throw new Error('少なくとも1つのURLを指定してください。');
+    throw new Error('At least one URL is required.');
   }
 
   await Promise.all([
@@ -198,7 +198,7 @@ async function capturePageFrames(input: {
   }
 
   if (!lastFrame) {
-    throw new Error(`ページのフレーム取得に失敗しました: ${url.toString()}`);
+    throw new Error(`Failed to capture frames from page: ${url.toString()}`);
   }
 
   return {

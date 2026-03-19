@@ -30,11 +30,11 @@ export function parseCliArgs(argv = process.argv.slice(2)): CaptureOptions {
   const [command, ...rest] = argv;
 
   if (!command) {
-    throw new CliError('サブコマンドが必要です。', true);
+    throw new CliError('A subcommand is required.', true);
   }
 
   if (command !== 'capture') {
-    throw new CliError(`未知のサブコマンドです: ${command}`, true);
+    throw new CliError(`Unknown subcommand: ${command}`, true);
   }
 
   const parsed = parseArgs({
@@ -83,7 +83,7 @@ export function parseCliArgs(argv = process.argv.slice(2)): CaptureOptions {
   });
 
   if (parsed.positionals.length === 0) {
-    throw new CliError('capture にはURLが必要です。', true);
+    throw new CliError('capture requires at least one URL.', true);
   }
 
   const urls = parsed.positionals.map((raw) =>
@@ -93,7 +93,7 @@ export function parseCliArgs(argv = process.argv.slice(2)): CaptureOptions {
   const durationOption = parsed.values.duration ?? DEFAULT_DURATION;
   if (durationOption !== 'auto' && Number.isNaN(Number(durationOption))) {
     throw new CliError(
-      `--duration は "auto" または数値で指定してください: ${durationOption}`,
+      `--duration must be "auto" or a number: ${durationOption}`,
     );
   }
 
@@ -147,7 +147,7 @@ export function parseCliArgs(argv = process.argv.slice(2)): CaptureOptions {
 
 function toNonEmptyArray<T>(items: T[]): NonEmptyArray<T> {
   if (items.length === 0) {
-    throw new CliError('capture にはURLが必要です。', true);
+    throw new CliError('capture requires at least one URL.', true);
   }
 
   return items as NonEmptyArray<T>;
@@ -186,7 +186,7 @@ function parseWithCliError<T>(
     }
 
     throw new CliError(
-      error instanceof Error ? error.message : '引数の解析に失敗しました。',
+      error instanceof Error ? error.message : 'Failed to parse arguments.',
     );
   }
 }
@@ -209,7 +209,7 @@ function parseViewport(rawViewport: string): CaptureOptions['viewport'] {
 
   if (!match?.groups) {
     throw new Error(
-      `--viewport は "1440x900" の形式で指定してください: ${rawViewport}`,
+      `--viewport must be in "WxH" format (e.g. "1440x900"): ${rawViewport}`,
     );
   }
 
@@ -217,7 +217,7 @@ function parseViewport(rawViewport: string): CaptureOptions['viewport'] {
   const height = Number(match.groups.height);
 
   if (width <= 0 || height <= 0) {
-    throw new Error(`--viewport の値が不正です: ${rawViewport}`);
+    throw new Error(`Invalid --viewport value: ${rawViewport}`);
   }
 
   return { width, height };
@@ -226,7 +226,7 @@ function parseViewport(rawViewport: string): CaptureOptions['viewport'] {
 function parsePositiveInt(rawValue: string): number {
   const value = Number(rawValue);
   if (!Number.isInteger(value) || value <= 0) {
-    throw new Error(`正の整数を指定してください: ${rawValue}`);
+    throw new Error(`Expected a positive integer: ${rawValue}`);
   }
 
   return value;
@@ -235,7 +235,7 @@ function parsePositiveInt(rawValue: string): number {
 function parsePositiveNumber(rawValue: string): number {
   const value = Number(rawValue);
   if (!Number.isFinite(value) || value <= 0) {
-    throw new Error(`正の数値を指定してください: ${rawValue}`);
+    throw new Error(`Expected a positive number: ${rawValue}`);
   }
 
   return value;
@@ -244,7 +244,7 @@ function parsePositiveNumber(rawValue: string): number {
 function parseNonNegativeNumber(rawValue: string): number {
   const value = Number(rawValue);
   if (!Number.isFinite(value) || value < 0) {
-    throw new Error(`0以上の数値を指定してください: ${rawValue}`);
+    throw new Error(`Expected a non-negative number: ${rawValue}`);
   }
 
   return value;
@@ -256,7 +256,7 @@ function parseMotion(rawMotion: string): MotionCurve {
   }
 
   throw new Error(
-    `--motion は ease-in-out-sine または linear です: ${rawMotion}`,
+    `--motion must be "ease-in-out-sine" or "linear": ${rawMotion}`,
   );
 }
 
@@ -268,7 +268,9 @@ function parseWaitFor(rawWaitFor: string): WaitForCondition {
   if (rawWaitFor.startsWith('selector:')) {
     const selector = rawWaitFor.slice('selector:'.length).trim();
     if (!selector) {
-      throw new Error('--wait-for selector:<css> の CSS セレクタが空です。');
+      throw new Error(
+        '--wait-for selector:<css> requires a non-empty CSS selector.',
+      );
     }
 
     return {
@@ -285,6 +287,6 @@ function parseWaitFor(rawWaitFor: string): WaitForCondition {
   }
 
   throw new Error(
-    `--wait-for は load / selector:<css> / ms:<n> のいずれかです: ${rawWaitFor}`,
+    `--wait-for must be "load", "selector:<css>", or "ms:<n>": ${rawWaitFor}`,
   );
 }

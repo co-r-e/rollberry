@@ -21,11 +21,13 @@ export function parseCaptureUrl(rawUrl: string): URL {
   try {
     url = new URL(rawUrl);
   } catch {
-    throw new Error(`無効なURLです: ${rawUrl}`);
+    throw new Error(`Invalid URL: ${rawUrl}`);
   }
 
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    throw new Error(`サポート対象外のURLです: ${rawUrl} (http/https のみ対応)`);
+    throw new Error(
+      `Unsupported URL: ${rawUrl} (only http/https are supported)`,
+    );
   }
 
   return url;

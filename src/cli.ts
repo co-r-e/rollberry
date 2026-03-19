@@ -20,7 +20,7 @@ async function main(): Promise<void> {
     }
 
     process.stderr.write(
-      `${error instanceof Error ? error.message : '予期しないエラーが発生しました。'}\n`,
+      `${error instanceof Error ? error.message : 'An unexpected error occurred.'}\n`,
     );
     process.exitCode = 1;
   }

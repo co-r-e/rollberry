@@ -109,7 +109,7 @@ async function loadConfig(path: string): Promise<RegressionSuiteConfig> {
   const parsed = JSON.parse(file) as RegressionSuiteConfig;
 
   if (!Array.isArray(parsed.cases) || parsed.cases.length === 0) {
-    throw new Error(`回帰設定に cases がありません: ${path}`);
+    throw new Error(`Regression config is missing "cases": ${path}`);
   }
 
   return parsed;

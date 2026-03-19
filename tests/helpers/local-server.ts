@@ -61,7 +61,7 @@ export async function startFixtureServer(
 
   const address = server.address();
   if (!address || typeof address === 'string') {
-    throw new Error('テストサーバの起動に失敗しました。');
+    throw new Error('Failed to start test server.');
   }
 
   return {

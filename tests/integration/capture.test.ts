@@ -185,7 +185,7 @@ describe('captureVideo', () => {
         }),
         createCaptureLogger(join(workingDir, 'empty.log.jsonl')),
       ),
-    ).rejects.toThrow('少なくとも1つのURLを指定してください。');
+    ).rejects.toThrow('At least one URL is required.');
   });
 
   it('writes failure manifest and log sidecars when capture fails', async () => {
