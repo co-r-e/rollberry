@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog and the project stays on the `v0.x.x`
 line until the CLI surface and capture behavior settle.
 
+## [0.1.9] - 2026-03-20
+
+### Added
+
+- TTY-aware progress bar during frame rendering; falls back to milestone
+  percentages in non-TTY environments.
+- `--force` flag to overwrite an existing output file.
+- `--version` / `-V` flag to print the current version.
+- `--help` / `-h` at both top-level and subcommand level.
+- Graceful cancellation via SIGINT / SIGTERM with partial-output cleanup.
+- Capture summary printed to stderr on completion (file size, duration, frame
+  count, pages, manifest path).
+- FFmpeg availability pre-check with platform-specific install instructions.
+- Frame-count safety limit (36 000 frames) and FPS cap (120) to prevent
+  runaway captures.
+- `--hide-selector` input validation (rejects selectors containing `{` or `}`).
+- URL credential sanitization — userinfo is stripped from all logs and
+  manifests.
+
+### Changed
+
+- Font loading now times out after 10 s instead of waiting indefinitely.
+- Preflight page measurement stops after 20 iterations to avoid infinite loops
+  on dynamically-loading pages.
+- Browser session properly closes when context creation fails.
+- FFmpeg encoder supports abort with SIGTERM → SIGKILL escalation.
+- Manifest `status` field now includes a `cancelled` value.
+- Error messages throughout the CLI include actionable hints and expected
+  formats.
+- Help text now shows default values, max constraints, and usage examples.
+
 ## [0.1.8] - 2026-03-19
 
 ### Added

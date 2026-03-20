@@ -1,13 +1,15 @@
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 
+import { MAX_FPS } from './capture/constants.js';
 import type {
   CaptureOptions,
   MotionCurve,
   NonEmptyArray,
   WaitForCondition,
 } from './capture/types.js';
-import { parseCaptureUrl } from './capture/utils.js';
+import { parseCaptureUrl, validateHideSelector } from './capture/utils.js';
+import { VERSION } from './version.js';
 
 const DEFAULT_OUT_FILE = 'rollberry.mp4';
 const DEFAULT_VIEWPORT = '1440x900';
@@ -26,15 +28,46 @@ export class CliError extends Error {
   }
 }
 
+export class HelpRequest extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'HelpRequest';
+  }
+}
+
+export class VersionRequest extends Error {
+  readonly version = VERSION;
+  constructor() {
+    super(VERSION);
+    this.name = 'VersionRequest';
+  }
+}
+
 export function parseCliArgs(argv = process.argv.slice(2)): CaptureOptions {
   const [command, ...rest] = argv;
 
+  if (command === '--help' || command === '-h') {
+    throw new HelpRequest(formatUsage());
+  }
+
+  if (command === '--version' || command === '-V') {
+    throw new VersionRequest();
+  }
+
   if (!command) {
-    throw new CliError('A subcommand is required.', true);
+    throw new CliError(
+      'A subcommand is required.\n\nAvailable commands:\n  capture    Capture a scroll video from one or more URLs\n\nRun rollberry --help for more information.',
+    );
   }
 
   if (command !== 'capture') {
-    throw new CliError(`Unknown subcommand: ${command}`, true);
+    throw new CliError(
+      `Unknown subcommand: ${command}\n\nAvailable commands:\n  capture    Capture a scroll video from one or more URLs\n\nRun rollberry --help for more information.`,
+    );
+  }
+
+  if (rest.includes('--help') || rest.includes('-h')) {
+    throw new HelpRequest(formatUsage());
   }
 
   const parsed = parseArgs({
@@ -78,6 +111,9 @@ export function parseCliArgs(argv = process.argv.slice(2)): CaptureOptions {
       'log-file': {
         type: 'string',
       },
+      force: {
+        type: 'boolean',
+      },
     },
     strict: true,
   });
@@ -93,7 +129,7 @@ export function parseCliArgs(argv = process.argv.slice(2)): CaptureOptions {
   const durationOption = parsed.values.duration ?? DEFAULT_DURATION;
   if (durationOption !== 'auto' && Number.isNaN(Number(durationOption))) {
     throw new CliError(
-      `--duration must be "auto" or a number: ${durationOption}`,
+      `--duration must be "auto" or a positive number (e.g. --duration 5): ${durationOption}`,
     );
   }
 
@@ -103,6 +139,20 @@ export function parseCliArgs(argv = process.argv.slice(2)): CaptureOptions {
     parsed.values['page-gap'] ?? '0',
     parseNonNegativeNumber,
   );
+
+  const hideSelectors = parsed.values['hide-selector'] ?? [];
+  for (const selector of hideSelectors) {
+    parseWithCliError(selector, validateHideSelector);
+  }
+
+  const fps = parseWithCliError(
+    parsed.values.fps ?? String(DEFAULT_FPS),
+    parsePositiveInt,
+  );
+
+  if (fps > MAX_FPS) {
+    throw new CliError(`--fps must be at most ${MAX_FPS}: ${fps}`);
+  }
 
   return {
     urls: toNonEmptyArray(urls),
@@ -117,10 +167,7 @@ export function parseCliArgs(argv = process.argv.slice(2)): CaptureOptions {
       parsed.values.viewport ?? DEFAULT_VIEWPORT,
       parseViewport,
     ),
-    fps: parseWithCliError(
-      parsed.values.fps ?? String(DEFAULT_FPS),
-      parsePositiveInt,
-    ),
+    fps,
     duration:
       durationOption === 'auto'
         ? 'auto'
@@ -137,11 +184,12 @@ export function parseCliArgs(argv = process.argv.slice(2)): CaptureOptions {
       parsed.values['wait-for'] ?? 'load',
       parseWaitFor,
     ),
-    hideSelectors: parsed.values['hide-selector'] ?? [],
+    hideSelectors,
     pageGapSeconds,
     debugFramesDir: parsed.values['debug-frames-dir']
       ? resolveOutPath(parsed.values['debug-frames-dir'])
       : undefined,
+    force: parsed.values.force === true,
   };
 }
 
@@ -155,22 +203,32 @@ function toNonEmptyArray<T>(items: T[]): NonEmptyArray<T> {
 
 export function formatUsage(): string {
   return [
+    `rollberry v${VERSION} — Capture smooth scroll videos from web pages`,
+    '',
     'Usage:',
     '  rollberry capture <url...> [options]',
+    '  rollberry --help | -h',
+    '  rollberry --version | -V',
     '',
     'Options:',
     '  --out <file>                Output MP4 path (default: ./rollberry.mp4)',
     '  --viewport <WxH>           Viewport size (default: 1440x900)',
-    '  --fps <n>                  Frames per second (default: 60)',
+    `  --fps <n>                  Frames per second (default: 60, max: ${MAX_FPS})`,
     '  --duration <seconds|auto>  Capture duration (default: auto)',
-    '  --motion <curve>           ease-in-out-sine | linear',
+    '  --motion <curve>           ease-in-out-sine | linear (default: ease-in-out-sine)',
     '  --timeout <ms>             Navigation timeout (default: 30000)',
-    '  --wait-for <mode>          load | selector:<css> | ms:<n>',
-    '  --hide-selector <css>      Hide CSS selector before capture',
+    '  --wait-for <mode>          load | selector:<css> | ms:<n> (default: load)',
+    '  --hide-selector <css>      Hide CSS selector before capture (repeatable)',
+    '  --force                    Overwrite output file if it already exists',
     '  --debug-frames-dir <dir>   Save raw PNG frames for debugging',
     '  --page-gap <seconds>       Pause between pages (default: 0)',
     '  --manifest <file>          Manifest JSON path (default: <out>.manifest.json)',
     '  --log-file <file>          Log JSONL path (default: <out>.log.jsonl)',
+    '',
+    'Examples:',
+    '  rollberry capture http://localhost:3000',
+    '  rollberry capture https://example.com --out demo.mp4 --viewport 1920x1080',
+    '  rollberry capture https://example.com --duration 10 --fps 30 --force',
   ].join('\n');
 }
 
@@ -217,7 +275,9 @@ function parseViewport(rawViewport: string): CaptureOptions['viewport'] {
   const height = Number(match.groups.height);
 
   if (width <= 0 || height <= 0) {
-    throw new Error(`Invalid --viewport value: ${rawViewport}`);
+    throw new Error(
+      `--viewport dimensions must be positive (e.g. "1440x900"): ${rawViewport}`,
+    );
   }
 
   return { width, height };
@@ -226,7 +286,7 @@ function parseViewport(rawViewport: string): CaptureOptions['viewport'] {
 function parsePositiveInt(rawValue: string): number {
   const value = Number(rawValue);
   if (!Number.isInteger(value) || value <= 0) {
-    throw new Error(`Expected a positive integer: ${rawValue}`);
+    throw new Error(`Expected a positive integer (e.g. "60"): ${rawValue}`);
   }
 
   return value;
@@ -235,7 +295,7 @@ function parsePositiveInt(rawValue: string): number {
 function parsePositiveNumber(rawValue: string): number {
   const value = Number(rawValue);
   if (!Number.isFinite(value) || value <= 0) {
-    throw new Error(`Expected a positive number: ${rawValue}`);
+    throw new Error(`Expected a positive number (e.g. "5.0"): ${rawValue}`);
   }
 
   return value;
@@ -244,7 +304,9 @@ function parsePositiveNumber(rawValue: string): number {
 function parseNonNegativeNumber(rawValue: string): number {
   const value = Number(rawValue);
   if (!Number.isFinite(value) || value < 0) {
-    throw new Error(`Expected a non-negative number: ${rawValue}`);
+    throw new Error(
+      `Expected a non-negative number (e.g. "0" or "1.5"): ${rawValue}`,
+    );
   }
 
   return value;

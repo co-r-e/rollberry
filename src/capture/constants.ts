@@ -6,3 +6,7 @@ export const STABILIZE_DELAY_MS = 500;
 export const PREFLIGHT_STEP_DELAY_MS = 120;
 export const PREFLIGHT_STABLE_ROUNDS = 3;
 export const PREFLIGHT_MAX_SCROLL_HEIGHT = 30_000;
+export const MAX_TOTAL_FRAMES = 36_000;
+export const MAX_FPS = 120;
+export const FONT_LOADING_TIMEOUT_MS = 10_000;
+export const MAX_PREFLIGHT_ITERATIONS = 20;

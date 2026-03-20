@@ -1,4 +1,4 @@
-import { mkdir } from 'node:fs/promises';
+import { access, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
 import type { Page } from 'playwright';
@@ -21,16 +21,48 @@ export function parseCaptureUrl(rawUrl: string): URL {
   try {
     url = new URL(rawUrl);
   } catch {
-    throw new Error(`Invalid URL: ${rawUrl}`);
+    throw new Error(
+      `Invalid URL: ${rawUrl}\n  Expected format: http://example.com or https://localhost:3000`,
+    );
   }
 
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
     throw new Error(
-      `Unsupported URL: ${rawUrl} (only http/https are supported)`,
+      `Unsupported URL: ${rawUrl} (only http:// and https:// are supported)`,
     );
   }
 
   return url;
+}
+
+export function sanitizeUrl(url: URL): string {
+  const sanitized = new URL(url.toString());
+  sanitized.username = '';
+  sanitized.password = '';
+  return sanitized.toString();
+}
+
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export function validateHideSelector(selector: string): void {
+  if (selector.includes('{') || selector.includes('}')) {
+    throw new Error(
+      `Invalid CSS selector for --hide-selector: "${selector}". Selectors must not contain { or } characters.`,
+    );
+  }
+}
+
+export async function fileExists(path: string): Promise<boolean> {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function ensureParentDirectory(filePath: string): Promise<void> {

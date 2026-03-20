@@ -29,7 +29,7 @@ export async function ensureChromiumInstalled(
 
   if (!(await hasExecutable(executablePath))) {
     throw new Error(
-      `Chromium executable not found after installation: ${executablePath}`,
+      `Chromium executable not found after installation: ${executablePath}\n  Try running: npx playwright install chromium`,
     );
   }
 

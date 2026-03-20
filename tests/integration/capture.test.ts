@@ -248,6 +248,7 @@ function createOptions(
     hideSelectors: overrides.hideSelectors ?? ['#cookie-banner'],
     pageGapSeconds: overrides.pageGapSeconds ?? 0,
     debugFramesDir: overrides.debugFramesDir,
+    force: overrides.force ?? true,
   };
 }
 

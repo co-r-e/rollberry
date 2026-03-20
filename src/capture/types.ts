@@ -25,6 +25,7 @@ export interface CaptureOptions {
   hideSelectors: string[];
   pageGapSeconds: number;
   debugFramesDir?: string;
+  force: boolean;
 }
 
 export interface ResolvedCaptureOptions extends CaptureOptions {
@@ -65,7 +66,7 @@ export interface CaptureRunResult {
 
 export interface CaptureManifest {
   schemaVersion: 2;
-  status: 'succeeded' | 'failed';
+  status: 'succeeded' | 'failed' | 'cancelled';
   startedAt: string;
   finishedAt: string;
   durationMs: number;

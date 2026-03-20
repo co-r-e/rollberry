@@ -1,33 +1,41 @@
 import { writeFile } from 'node:fs/promises';
 
-import { captureVideo } from './capture/capture.js';
+import { AbortError, captureVideo } from './capture/capture.js';
 import { createCaptureLogger } from './capture/logger.js';
+import type { ProgressReporter } from './capture/progress.js';
 import type {
   CaptureManifest,
   CaptureOptions,
   CaptureRunResult,
 } from './capture/types.js';
+import { sanitizeUrl } from './capture/utils.js';
+
 export async function runCaptureCommand(
   options: CaptureOptions,
+  progress?: ProgressReporter,
+  signal?: AbortSignal,
 ): Promise<CaptureRunResult> {
   const logger = createCaptureLogger(options.logFilePath);
   const startedAt = new Date();
+  let capture: CaptureRunResult['capture'] | undefined;
+  const sanitizedUrls = options.urls.map((u) => sanitizeUrl(u));
 
   await logger.info('capture.start', 'Capture started', {
-    urls: options.urls.map((u) => u.toString()),
+    urls: sanitizedUrls,
     outPath: options.outPath,
     manifestPath: options.manifestPath,
     logFilePath: options.logFilePath,
   });
 
   try {
-    const capture = await captureVideo(options, logger);
+    capture = await captureVideo(options, logger, progress, signal);
     const finishedAt = new Date();
     const warnings = capture.truncated ? ['scroll_height_truncated'] : [];
 
     const manifest = buildManifest({
       status: 'succeeded',
       options,
+      sanitizedUrls,
       startedAt,
       finishedAt,
       warnings,
@@ -50,22 +58,31 @@ export async function runCaptureCommand(
     };
   } catch (error) {
     const finishedAt = new Date();
+    const isCancelled = error instanceof AbortError;
+    const warnings = capture?.truncated ? ['scroll_height_truncated'] : [];
+
     const manifest = buildManifest({
-      status: 'failed',
+      status: isCancelled ? 'cancelled' : 'failed',
       options,
+      sanitizedUrls,
       startedAt,
       finishedAt,
-      warnings: [],
-      videoCreated: false,
-      error,
+      warnings,
+      videoCreated: capture !== undefined,
+      result: capture,
+      error: isCancelled ? undefined : error,
     });
 
-    await logger.error('capture.failed', 'Capture failed', {
+    const logEvent = isCancelled ? 'capture.cancelled' : 'capture.failed';
+    const logMessage = isCancelled ? 'Capture cancelled' : 'Capture failed';
+
+    await logger.error(logEvent, logMessage, {
       name: manifest.error?.name,
       message: manifest.error?.message,
       manifestPath: options.manifestPath,
     });
     await writeManifest(options.manifestPath, manifest);
+
     throw error;
   } finally {
     await logger.close();
@@ -86,6 +103,7 @@ async function writeManifest(
 function buildManifest(input: {
   status: CaptureManifest['status'];
   options: CaptureOptions;
+  sanitizedUrls: string[];
   startedAt: Date;
   finishedAt: Date;
   warnings: string[];
@@ -105,7 +123,7 @@ function buildManifest(input: {
       arch: process.arch,
     },
     options: {
-      urls: input.options.urls.map((u) => u.toString()),
+      urls: input.sanitizedUrls,
       viewport: input.options.viewport,
       fps: input.options.fps,
       duration: input.options.duration,

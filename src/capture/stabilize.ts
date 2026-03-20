@@ -1,8 +1,12 @@
 import type { Page } from 'playwright';
 
-import { STABILIZE_DELAY_MS } from './constants.js';
+import { FONT_LOADING_TIMEOUT_MS, STABILIZE_DELAY_MS } from './constants.js';
 import type { WaitForCondition } from './types.js';
-import { delay, waitForAnimationFrames } from './utils.js';
+import {
+  delay,
+  validateHideSelector,
+  waitForAnimationFrames,
+} from './utils.js';
 
 export async function stabilizePage(options: {
   page: Page;
@@ -23,6 +27,10 @@ export async function stabilizePage(options: {
 }
 
 function buildStabilizingCss(hideSelectors: string[]): string {
+  for (const selector of hideSelectors) {
+    validateHideSelector(selector);
+  }
+
   const hiddenSelectorBlock =
     hideSelectors.length > 0
       ? `${hideSelectors.join(', ')} { display: none !important; visibility: hidden !important; }\n`
@@ -66,11 +74,14 @@ async function waitForRequestedCondition(
 }
 
 async function waitForFonts(page: Page): Promise<void> {
-  await page.evaluate(async () => {
+  await page.evaluate(async (timeoutMs: number) => {
     if (!('fonts' in document)) {
       return;
     }
 
-    await document.fonts.ready;
-  });
+    await Promise.race([
+      document.fonts.ready,
+      new Promise((resolve) => setTimeout(resolve, timeoutMs)),
+    ]);
+  }, FONT_LOADING_TIMEOUT_MS);
 }

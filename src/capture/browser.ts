@@ -20,19 +20,25 @@ export async function openBrowserSession(
   const browser = await chromium.launch({
     headless: true,
   });
-  const context = await browser.newContext({
-    viewport: options.viewport,
-    ignoreHTTPSErrors: options.urls.some(isLocalUrl),
-  });
-  const page = await context.newPage();
 
-  page.setDefaultTimeout(options.timeoutMs);
+  try {
+    const context = await browser.newContext({
+      viewport: options.viewport,
+      ignoreHTTPSErrors: options.urls.some(isLocalUrl),
+    });
+    const page = await context.newPage();
 
-  await page.addInitScript(() => {
-    history.scrollRestoration = 'manual';
-  });
+    page.setDefaultTimeout(options.timeoutMs);
 
-  return { browser, page };
+    await page.addInitScript(() => {
+      history.scrollRestoration = 'manual';
+    });
+
+    return { browser, page };
+  } catch (error) {
+    await browser.close();
+    throw error;
+  }
 }
 
 export async function navigateWithRetry(

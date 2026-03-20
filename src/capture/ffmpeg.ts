@@ -1,9 +1,28 @@
-import { spawn } from 'node:child_process';
-import { once } from 'node:events';
+import { execFile, spawn } from 'node:child_process';
+
+const FFMPEG_ABORT_TIMEOUT_MS = 1_000;
+
+interface EncoderCloseResult {
+  exitCode: number | null;
+  signal: NodeJS.Signals | null;
+}
 
 export interface VideoEncoder {
   writeFrame(frame: Buffer): Promise<void>;
   finish(): Promise<void>;
+  abort(): Promise<void>;
+}
+
+export async function checkFfmpegAvailable(): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    execFile('ffmpeg', ['-version'], (error) => {
+      if (error) {
+        reject(createFfmpegPreflightError(error));
+        return;
+      }
+      resolve();
+    });
+  });
 }
 
 export async function createVideoEncoder(options: {
@@ -47,6 +66,14 @@ export async function createVideoEncoder(options: {
 
   let spawnError: Error | undefined;
   let stderr = '';
+  let closeResult: EncoderCloseResult | undefined;
+
+  const closePromise = new Promise<EncoderCloseResult>((resolve) => {
+    ffmpeg.once('close', (exitCode, signal) => {
+      closeResult = { exitCode, signal };
+      resolve(closeResult);
+    });
+  });
 
   ffmpeg.on('error', (error) => {
     spawnError = error;
@@ -61,6 +88,15 @@ export async function createVideoEncoder(options: {
     async writeFrame(frame) {
       if (spawnError) {
         throw createEncoderError(spawnError, stderr);
+      }
+
+      if (closeResult) {
+        throw createEncoderError(
+          new Error(
+            `FFmpeg exited before encoding completed (${formatCloseResult(closeResult)})`,
+          ),
+          stderr,
+        );
       }
 
       const stdin = ffmpeg.stdin;
@@ -84,19 +120,72 @@ export async function createVideoEncoder(options: {
         throw createEncoderError(spawnError, stderr);
       }
 
-      ffmpeg.stdin.end();
-      const [exitCode] = (await once(ffmpeg, 'close')) as [number | null];
+      if (!ffmpeg.stdin.destroyed && !ffmpeg.stdin.writableEnded) {
+        ffmpeg.stdin.end();
+      }
+      const result = closeResult ?? (await closePromise);
 
-      if (exitCode !== 0) {
+      if (result.exitCode !== 0) {
         throw createEncoderError(
-          new Error(
-            `FFmpeg exited with error (exit code: ${exitCode ?? 'null'})`,
-          ),
+          new Error(`FFmpeg exited with error (${formatCloseResult(result)})`),
           stderr,
         );
       }
     },
+    async abort() {
+      try {
+        if (!ffmpeg.stdin.destroyed && !ffmpeg.stdin.writableEnded) {
+          ffmpeg.stdin.destroy();
+        }
+      } catch {
+        // stdin may already be closed
+      }
+
+      if (closeResult) {
+        await closePromise;
+        return;
+      }
+
+      try {
+        ffmpeg.kill('SIGTERM');
+      } catch {
+        // Process may already be exiting
+      }
+
+      const exited = await Promise.race([
+        closePromise.then(() => true),
+        new Promise<false>((resolve) => {
+          setTimeout(resolve, FFMPEG_ABORT_TIMEOUT_MS, false);
+        }),
+      ]);
+
+      if (!exited && !closeResult) {
+        try {
+          ffmpeg.kill('SIGKILL');
+        } catch {
+          // Process may already be exiting
+        }
+        await closePromise;
+      }
+    },
   };
+}
+
+function createFfmpegPreflightError(
+  error: Error & { code?: string | number | null },
+): Error {
+  if (error.code === 'ENOENT') {
+    return new Error(
+      [
+        'FFmpeg is required but was not found in PATH.',
+        '  macOS:   brew install ffmpeg',
+        '  Ubuntu:  sudo apt install ffmpeg',
+        '  Windows: winget install ffmpeg',
+      ].join('\n'),
+    );
+  }
+
+  return new Error(`Failed to execute FFmpeg: ${error.message}`);
 }
 
 function createEncoderError(error: Error, stderr: string): Error {
@@ -106,4 +195,12 @@ function createEncoderError(error: Error, stderr: string): Error {
 
   const detail = stderr.trim();
   return new Error(detail ? `${error.message}\n${detail}` : error.message);
+}
+
+function formatCloseResult(result: EncoderCloseResult): string {
+  if (result.signal) {
+    return `signal: ${result.signal}`;
+  }
+
+  return `exit code: ${result.exitCode ?? 'null'}`;
 }

@@ -2,6 +2,7 @@ import {
   AUTO_DURATION_MAX_SECONDS,
   AUTO_DURATION_MIN_SECONDS,
   AUTO_DURATION_PIXELS_PER_SECOND,
+  MAX_TOTAL_FRAMES,
 } from './constants.js';
 import type { MotionCurve } from './types.js';
 import { clamp } from './utils.js';
@@ -31,6 +32,12 @@ export function buildScrollFrames(options: {
     1,
     Math.ceil(options.durationSeconds * options.fps),
   );
+
+  if (frameCount > MAX_TOTAL_FRAMES) {
+    throw new Error(
+      `Frame count ${frameCount} exceeds maximum ${MAX_TOTAL_FRAMES}. Reduce --fps or --duration.`,
+    );
+  }
 
   if (frameCount === 1) {
     return [0];
