@@ -12,7 +12,7 @@ Maintained by CORe Inc.
 Requirements:
 
 - Node.js `24.12.0+`
-- `ffmpeg` and `ffprobe` available on `PATH`
+- `ffmpeg` available on `PATH`
 
 Install nothing globally. Run it directly:
 
@@ -65,7 +65,7 @@ Notes:
 
 - `npx` downloads the published CLI package automatically
 - on the first run, Rollberry installs Playwright Chromium if needed
-- `ffmpeg` and `ffprobe` must already be available on your machine
+- `ffmpeg` must already be available on your machine
 - if you want reproducible automation, pin the package version with
   `npx rollberry@<version> ...`
 
@@ -168,6 +168,9 @@ If `ffmpeg` is missing:
 brew install ffmpeg
 ```
 
+If you are running the test suite, `ffprobe` may also be used for extra video
+verification. Most FFmpeg installs include it alongside `ffmpeg`.
+
 If capture fails, inspect:
 
 - `*.manifest.json` for final status and error details
@@ -186,6 +189,11 @@ If a site keeps shifting during capture:
 - Contribution guide: see [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 ## Local Development
+
+For local CLI usage and captures, Rollberry requires `ffmpeg` on `PATH`.
+When running `pnpm test`, the integration suite uses `ffprobe` when available
+to inspect generated videos, but falls back to basic file validation if it is
+missing.
 
 ```bash
 corepack pnpm install

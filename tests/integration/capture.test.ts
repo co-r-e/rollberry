@@ -1,5 +1,5 @@
-import { execFile } from 'node:child_process';
-import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
+import { execFile, spawnSync } from 'node:child_process';
+import { mkdtemp, readdir, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { promisify } from 'node:util';
@@ -13,6 +13,7 @@ import { runCaptureCommand } from '../../src/run-capture.js';
 import { startFixtureServer } from '../helpers/local-server.js';
 
 const execFileAsync = promisify(execFile);
+const hasFfprobe = isCommandAvailable('ffprobe');
 
 describe('captureVideo', () => {
   const cleanupTasks: Array<() => Promise<void>> = [];
@@ -47,9 +48,7 @@ describe('captureVideo', () => {
     expect(result.pages).toHaveLength(1);
     expect(result.pages[0]?.scrollHeight).toBeGreaterThan(2_880);
 
-    const probe = await ffprobeJson(result.outPath);
-    expect(probe.streams[0]?.codec_name).toBe('h264');
-    expect(Number(probe.streams[0]?.nb_read_frames)).toBe(result.frameCount);
+    await expectVideoFile(result.outPath, result.frameCount);
   });
 
   it('captures an MP4 from localhost HTTPS with a self-signed certificate', async () => {
@@ -69,8 +68,7 @@ describe('captureVideo', () => {
 
     expect(result.frameCount).toBeGreaterThan(0);
 
-    const probe = await ffprobeJson(result.outPath);
-    expect(probe.format.format_name).toContain('mov,mp4');
+    await expectVideoFile(result.outPath);
   });
 
   it('writes manifest and log sidecars on success', async () => {
@@ -128,9 +126,7 @@ describe('captureVideo', () => {
       result.pages[0]?.frameCount + result.pages[1]?.frameCount,
     );
 
-    const probe = await ffprobeJson(result.outPath);
-    expect(probe.streams[0]?.codec_name).toBe('h264');
-    expect(Number(probe.streams[0]?.nb_read_frames)).toBe(result.frameCount);
+    await expectVideoFile(result.outPath, result.frameCount);
   });
 
   it('captures multiple pages with page gap', async () => {
@@ -163,9 +159,7 @@ describe('captureVideo', () => {
         result.pages[1]?.frameCount,
     );
 
-    const probe = await ffprobeJson(result.outPath);
-    expect(probe.streams[0]?.codec_name).toBe('h264');
-    expect(Number(probe.streams[0]?.nb_read_frames)).toBe(result.frameCount);
+    await expectVideoFile(result.outPath, result.frameCount);
 
     const debugFrames = (await readdir(join(workingDir, 'frames'))).filter(
       (file) => file.endsWith('.png'),
@@ -270,10 +264,39 @@ async function ffprobeJson(filePath: string): Promise<{
   return JSON.parse(stdout);
 }
 
+async function expectVideoFile(
+  filePath: string,
+  expectedFrameCount?: number,
+): Promise<void> {
+  const fileStat = await stat(filePath);
+  expect(fileStat.isFile()).toBe(true);
+  expect(fileStat.size).toBeGreaterThan(0);
+
+  if (!hasFfprobe) {
+    return;
+  }
+
+  const probe = await ffprobeJson(filePath);
+  expect(probe.format.format_name).toContain('mov,mp4');
+  expect(probe.streams[0]?.codec_name).toBe('h264');
+
+  if (expectedFrameCount !== undefined) {
+    expect(Number(probe.streams[0]?.nb_read_frames)).toBe(expectedFrameCount);
+  }
+}
+
 async function readText(filePath: string): Promise<string> {
   return readFile(filePath, 'utf8');
 }
 
 function basenameWithoutExtension(filePath: string): string {
   return basename(filePath, '.mp4');
+}
+
+function isCommandAvailable(command: string): boolean {
+  const result = spawnSync(command, ['-version'], {
+    stdio: 'ignore',
+  });
+
+  return result.status === 0;
 }
