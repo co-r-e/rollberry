@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on Keep a Changelog and the project stays on the `v0.x.x`
 line until the CLI surface and capture behavior settle.
 
+## [0.2.0] - 2026-03-22
+
+### Added
+
+- `render <project.json>` command for project-based multi-scene rendering.
+- Project config support for `scenes`, `outputs`, reusable defaults, and
+  project-level summary manifests.
+- Scene `actions` and mid-capture `timeline` segments including `pause`,
+  `scroll`, `click`, `hover`, `press`, `type`, and `scroll-to`.
+- Multi-output rendering with per-output viewport, audio, subtitles,
+  transitions, and encoder settings.
+- Node library exports for project loading, render planning, and render
+  execution.
+- JSON Schema and sample project config for editor validation and onboarding.
+- Scene-to-scene `crossfade` transitions.
+- Subtitle support for both soft and burn-in modes with `.srt`, `.vtt`, and
+  `.webvtt` inputs.
+- `finalVideo` encoder controls for final `mp4` and `webm` outputs.
+- `intermediateArtifact` profiles for scene clip generation.
+
+### Changed
+
+- Render orchestration now uses an explicit render-plan layer that separates
+  scene capture from final composition.
+- Render manifests now use schema version `2` and separate `captureMetrics`
+  from `artifactMetrics`.
+- Probe handling now records explicit status and warnings, and fails fast when
+  precise clip timing is required by composition capabilities such as
+  `crossfade`.
+
 ## [0.1.9] - 2026-03-20
 
 ### Added

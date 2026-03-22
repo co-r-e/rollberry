@@ -3,7 +3,7 @@ import { chromium, type Page } from 'playwright';
 import { ensureChromiumInstalled } from './browser-install.js';
 import { LOCALHOST_RETRY_INTERVAL_MS } from './constants.js';
 import type { CaptureLogger } from './logger.js';
-import type { CaptureOptions } from './types.js';
+import type { Viewport } from './types.js';
 import { delay, isLocalUrl } from './utils.js';
 
 export interface BrowserSession {
@@ -12,7 +12,11 @@ export interface BrowserSession {
 }
 
 export async function openBrowserSession(
-  options: CaptureOptions,
+  options: {
+    viewport: Viewport;
+    timeoutMs: number;
+    urls: URL[];
+  },
   logger: CaptureLogger,
 ): Promise<BrowserSession> {
   await ensureChromiumInstalled(logger);

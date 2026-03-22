@@ -156,9 +156,31 @@ function renderFixtureHtml(): string {
         to { transform: translateY(-6px); }
       }`,
     extraBody: `    <div id="cookie-banner">Cookie Banner</div>
+    <section class="controls">
+      <button id="open-panel" type="button">Open Panel</button>
+      <input id="search-field" type="text" value="" placeholder="Search" />
+    </section>
+    <section class="panel reveal-panel" id="action-panel" hidden>
+      <h2>Action Panel</h2>
+    </section>
     <script>
       const stream = new EventSource('/events');
       stream.onmessage = () => {};
+
+      const openPanelButton = document.getElementById('open-panel');
+      const actionPanel = document.getElementById('action-panel');
+      const searchField = document.getElementById('search-field');
+
+      openPanelButton?.addEventListener('click', () => {
+        if (actionPanel) {
+          actionPanel.hidden = false;
+        }
+      });
+
+      searchField?.addEventListener('input', (event) => {
+        const value = event.target instanceof HTMLInputElement ? event.target.value : '';
+        document.body.dataset.searchValue = value;
+      });
 
       let extraAppended = false;
       const appendExtraPanel = () => {
@@ -207,6 +229,32 @@ function renderFixturePage(config: FixturePageConfig): string {
         display: grid;
         place-items: center;
         border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      }
+
+      .controls {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        padding: 18px 24px;
+        background: rgba(255, 255, 255, 0.88);
+        backdrop-filter: blur(12px);
+      }
+
+      .controls button,
+      .controls input {
+        font: inherit;
+        padding: 10px 14px;
+        border-radius: 999px;
+        border: 1px solid rgba(28, 29, 31, 0.16);
+      }
+
+      .controls button {
+        background: #1c1d1f;
+        color: #fff;
+        cursor: pointer;
       }
 
       .panel h1,

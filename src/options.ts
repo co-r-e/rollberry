@@ -11,12 +11,22 @@ import type {
 import { parseCaptureUrl, validateHideSelector } from './capture/utils.js';
 import { VERSION } from './version.js';
 
-const DEFAULT_OUT_FILE = 'rollberry.mp4';
-const DEFAULT_VIEWPORT = '1440x900';
-const DEFAULT_FPS = 60;
-const DEFAULT_DURATION = 'auto';
-const DEFAULT_MOTION: MotionCurve = 'ease-in-out-sine';
-const DEFAULT_TIMEOUT_MS = 30_000;
+export const DEFAULT_OUT_FILE = 'rollberry.mp4';
+export const DEFAULT_VIEWPORT = '1440x900';
+export const DEFAULT_FPS = 60;
+export const DEFAULT_DURATION = 'auto';
+export const DEFAULT_MOTION: MotionCurve = 'ease-in-out-sine';
+export const DEFAULT_TIMEOUT_MS = 30_000;
+
+export interface RenderCliOptions {
+  projectPath: string;
+  outputNames: string[];
+  force: boolean;
+}
+
+export type ParsedCliCommand =
+  | { kind: 'capture'; options: CaptureOptions }
+  | { kind: 'render'; options: RenderCliOptions };
 
 export class CliError extends Error {
   constructor(
@@ -43,7 +53,9 @@ export class VersionRequest extends Error {
   }
 }
 
-export function parseCliArgs(argv = process.argv.slice(2)): CaptureOptions {
+export function parseCommandArgs(
+  argv = process.argv.slice(2),
+): ParsedCliCommand {
   const [command, ...rest] = argv;
 
   if (command === '--help' || command === '-h') {
@@ -55,23 +67,188 @@ export function parseCliArgs(argv = process.argv.slice(2)): CaptureOptions {
   }
 
   if (!command) {
+    throw createMissingSubcommandError();
+  }
+
+  switch (command) {
+    case 'capture':
+      return { kind: 'capture', options: parseCaptureArgs(rest) };
+    case 'render':
+      return { kind: 'render', options: parseRenderArgs(rest) };
+    default:
+      throw createUnknownSubcommandError(command);
+  }
+}
+
+export function parseCliArgs(argv = process.argv.slice(2)): CaptureOptions {
+  const args = argv[0] === 'capture' ? argv.slice(1) : argv;
+  return parseCaptureArgs(args);
+}
+
+export function formatUsage(): string {
+  return [
+    `rollberry v${VERSION} — Capture and render web pages into video`,
+    '',
+    'Usage:',
+    '  rollberry capture <url...> [options]',
+    '  rollberry render <project.json> [options]',
+    '  rollberry --help | -h',
+    '  rollberry --version | -V',
+    '',
+    'Capture Options:',
+    '  --out <file>                Output MP4 path (default: ./rollberry.mp4)',
+    '  --viewport <WxH>           Viewport size (default: 1440x900)',
+    `  --fps <n>                  Frames per second (default: 60, max: ${MAX_FPS})`,
+    '  --duration <seconds|auto>  Capture duration (default: auto)',
+    '  --motion <curve>           ease-in-out-sine | linear (default: ease-in-out-sine)',
+    '  --timeout <ms>             Navigation timeout (default: 30000)',
+    '  --wait-for <mode>          load | selector:<css> | ms:<n> (default: load)',
+    '  --hide-selector <css>      Hide CSS selector before capture (repeatable)',
+    '  --force                    Overwrite output file if it already exists',
+    '  --debug-frames-dir <dir>   Save raw PNG frames for debugging',
+    '  --page-gap <seconds>       Pause between pages (default: 0)',
+    '  --manifest <file>          Manifest JSON path (default: <out>.manifest.json)',
+    '  --log-file <file>          Log JSONL path (default: <out>.log.jsonl)',
+    '',
+    'Render Options:',
+    '  --output <name>            Render only the named output (repeatable)',
+    '  --force                    Overwrite configured output files',
+    '',
+    'Examples:',
+    '  rollberry capture http://localhost:3000',
+    '  rollberry capture https://example.com --out demo.mp4 --viewport 1920x1080',
+    '  rollberry render ./rollberry.project.json --output mobile',
+  ].join('\n');
+}
+
+export function parseWithCliError<T>(
+  rawValue: string,
+  parser: (value: string) => T,
+): T {
+  try {
+    return parser(rawValue);
+  } catch (error) {
+    if (error instanceof CliError) {
+      throw error;
+    }
+
     throw new CliError(
-      'A subcommand is required.\n\nAvailable commands:\n  capture    Capture a scroll video from one or more URLs\n\nRun rollberry --help for more information.',
+      error instanceof Error ? error.message : 'Failed to parse arguments.',
+    );
+  }
+}
+
+export function resolveOutPath(path: string): string {
+  return resolve(process.cwd(), path);
+}
+
+export function deriveSidecarPath(path: string, suffix: string): string {
+  const extension = /\.([^.]+)$/u.exec(path);
+  if (!extension) {
+    return `${path}${suffix}`;
+  }
+
+  return path.slice(0, -extension[0].length) + suffix;
+}
+
+export function parseViewport(rawViewport: string): CaptureOptions['viewport'] {
+  const match = /^(?<width>\d+)x(?<height>\d+)$/u.exec(rawViewport);
+
+  if (!match?.groups) {
+    throw new Error(
+      `--viewport must be in "WxH" format (e.g. "1440x900"): ${rawViewport}`,
     );
   }
 
-  if (command !== 'capture') {
-    throw new CliError(
-      `Unknown subcommand: ${command}\n\nAvailable commands:\n  capture    Capture a scroll video from one or more URLs\n\nRun rollberry --help for more information.`,
+  const width = Number(match.groups.width);
+  const height = Number(match.groups.height);
+
+  if (width <= 0 || height <= 0) {
+    throw new Error(
+      `--viewport dimensions must be positive (e.g. "1440x900"): ${rawViewport}`,
     );
   }
 
-  if (rest.includes('--help') || rest.includes('-h')) {
+  return { width, height };
+}
+
+export function parsePositiveInt(rawValue: string): number {
+  const value = Number(rawValue);
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`Expected a positive integer (e.g. "60"): ${rawValue}`);
+  }
+
+  return value;
+}
+
+export function parsePositiveNumber(rawValue: string): number {
+  const value = Number(rawValue);
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`Expected a positive number (e.g. "5.0"): ${rawValue}`);
+  }
+
+  return value;
+}
+
+export function parseNonNegativeNumber(rawValue: string): number {
+  const value = Number(rawValue);
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error(
+      `Expected a non-negative number (e.g. "0" or "1.5"): ${rawValue}`,
+    );
+  }
+
+  return value;
+}
+
+export function parseMotion(rawMotion: string): MotionCurve {
+  if (rawMotion === 'ease-in-out-sine' || rawMotion === 'linear') {
+    return rawMotion;
+  }
+
+  throw new Error(
+    `--motion must be "ease-in-out-sine" or "linear": ${rawMotion}`,
+  );
+}
+
+export function parseWaitFor(rawWaitFor: string): WaitForCondition {
+  if (rawWaitFor === 'load') {
+    return { kind: 'load' };
+  }
+
+  if (rawWaitFor.startsWith('selector:')) {
+    const selector = rawWaitFor.slice('selector:'.length).trim();
+    if (!selector) {
+      throw new Error(
+        '--wait-for selector:<css> requires a non-empty CSS selector.',
+      );
+    }
+
+    return {
+      kind: 'selector',
+      selector,
+    };
+  }
+
+  if (rawWaitFor.startsWith('ms:')) {
+    return {
+      kind: 'delay',
+      ms: parsePositiveInt(rawWaitFor.slice('ms:'.length)),
+    };
+  }
+
+  throw new Error(
+    `--wait-for must be "load", "selector:<css>", or "ms:<n>": ${rawWaitFor}`,
+  );
+}
+
+function parseCaptureArgs(args: string[]): CaptureOptions {
+  if (args.includes('--help') || args.includes('-h')) {
     throw new HelpRequest(formatUsage());
   }
 
   const parsed = parseArgs({
-    args: rest,
+    args,
     allowPositionals: true,
     options: {
       out: {
@@ -134,7 +311,6 @@ export function parseCliArgs(argv = process.argv.slice(2)): CaptureOptions {
   }
 
   const outPath = resolveOutPath(parsed.values.out ?? DEFAULT_OUT_FILE);
-
   const pageGapSeconds = parseWithCliError(
     parsed.values['page-gap'] ?? '0',
     parseNonNegativeNumber,
@@ -193,6 +369,44 @@ export function parseCliArgs(argv = process.argv.slice(2)): CaptureOptions {
   };
 }
 
+function parseRenderArgs(args: string[]): RenderCliOptions {
+  if (args.includes('--help') || args.includes('-h')) {
+    throw new HelpRequest(formatUsage());
+  }
+
+  const parsed = parseArgs({
+    args,
+    allowPositionals: true,
+    options: {
+      output: {
+        type: 'string',
+        multiple: true,
+      },
+      force: {
+        type: 'boolean',
+      },
+    },
+    strict: true,
+  });
+
+  if (parsed.positionals.length === 0) {
+    throw new CliError('render requires a project JSON path.', true);
+  }
+
+  if (parsed.positionals.length > 1) {
+    throw new CliError(
+      `render accepts exactly one project JSON path: ${parsed.positionals.slice(1).join(', ')}`,
+      true,
+    );
+  }
+
+  return {
+    projectPath: resolveOutPath(parsed.positionals[0]),
+    outputNames: parsed.values.output ?? [],
+    force: parsed.values.force === true,
+  };
+}
+
 function toNonEmptyArray<T>(items: T[]): NonEmptyArray<T> {
   if (items.length === 0) {
     throw new CliError('capture requires at least one URL.', true);
@@ -201,154 +415,30 @@ function toNonEmptyArray<T>(items: T[]): NonEmptyArray<T> {
   return items as NonEmptyArray<T>;
 }
 
-export function formatUsage(): string {
-  return [
-    `rollberry v${VERSION} — Capture smooth scroll videos from web pages`,
-    '',
-    'Usage:',
-    '  rollberry capture <url...> [options]',
-    '  rollberry --help | -h',
-    '  rollberry --version | -V',
-    '',
-    'Options:',
-    '  --out <file>                Output MP4 path (default: ./rollberry.mp4)',
-    '  --viewport <WxH>           Viewport size (default: 1440x900)',
-    `  --fps <n>                  Frames per second (default: 60, max: ${MAX_FPS})`,
-    '  --duration <seconds|auto>  Capture duration (default: auto)',
-    '  --motion <curve>           ease-in-out-sine | linear (default: ease-in-out-sine)',
-    '  --timeout <ms>             Navigation timeout (default: 30000)',
-    '  --wait-for <mode>          load | selector:<css> | ms:<n> (default: load)',
-    '  --hide-selector <css>      Hide CSS selector before capture (repeatable)',
-    '  --force                    Overwrite output file if it already exists',
-    '  --debug-frames-dir <dir>   Save raw PNG frames for debugging',
-    '  --page-gap <seconds>       Pause between pages (default: 0)',
-    '  --manifest <file>          Manifest JSON path (default: <out>.manifest.json)',
-    '  --log-file <file>          Log JSONL path (default: <out>.log.jsonl)',
-    '',
-    'Examples:',
-    '  rollberry capture http://localhost:3000',
-    '  rollberry capture https://example.com --out demo.mp4 --viewport 1920x1080',
-    '  rollberry capture https://example.com --duration 10 --fps 30 --force',
-  ].join('\n');
-}
-
-function parseWithCliError<T>(
-  rawValue: string,
-  parser: (value: string) => T,
-): T {
-  try {
-    return parser(rawValue);
-  } catch (error) {
-    if (error instanceof CliError) {
-      throw error;
-    }
-
-    throw new CliError(
-      error instanceof Error ? error.message : 'Failed to parse arguments.',
-    );
-  }
-}
-
-function resolveOutPath(path: string): string {
-  return resolve(process.cwd(), path);
-}
-
-function deriveSidecarPath(path: string, suffix: string): string {
-  const extension = /\.([^.]+)$/u.exec(path);
-  if (!extension) {
-    return `${path}${suffix}`;
-  }
-
-  return path.slice(0, -extension[0].length) + suffix;
-}
-
-function parseViewport(rawViewport: string): CaptureOptions['viewport'] {
-  const match = /^(?<width>\d+)x(?<height>\d+)$/u.exec(rawViewport);
-
-  if (!match?.groups) {
-    throw new Error(
-      `--viewport must be in "WxH" format (e.g. "1440x900"): ${rawViewport}`,
-    );
-  }
-
-  const width = Number(match.groups.width);
-  const height = Number(match.groups.height);
-
-  if (width <= 0 || height <= 0) {
-    throw new Error(
-      `--viewport dimensions must be positive (e.g. "1440x900"): ${rawViewport}`,
-    );
-  }
-
-  return { width, height };
-}
-
-function parsePositiveInt(rawValue: string): number {
-  const value = Number(rawValue);
-  if (!Number.isInteger(value) || value <= 0) {
-    throw new Error(`Expected a positive integer (e.g. "60"): ${rawValue}`);
-  }
-
-  return value;
-}
-
-function parsePositiveNumber(rawValue: string): number {
-  const value = Number(rawValue);
-  if (!Number.isFinite(value) || value <= 0) {
-    throw new Error(`Expected a positive number (e.g. "5.0"): ${rawValue}`);
-  }
-
-  return value;
-}
-
-function parseNonNegativeNumber(rawValue: string): number {
-  const value = Number(rawValue);
-  if (!Number.isFinite(value) || value < 0) {
-    throw new Error(
-      `Expected a non-negative number (e.g. "0" or "1.5"): ${rawValue}`,
-    );
-  }
-
-  return value;
-}
-
-function parseMotion(rawMotion: string): MotionCurve {
-  if (rawMotion === 'ease-in-out-sine' || rawMotion === 'linear') {
-    return rawMotion;
-  }
-
-  throw new Error(
-    `--motion must be "ease-in-out-sine" or "linear": ${rawMotion}`,
+function createMissingSubcommandError(): CliError {
+  return new CliError(
+    [
+      'A subcommand is required.',
+      '',
+      'Available commands:',
+      '  capture    Capture a scroll video from one or more URLs',
+      '  render     Render a project JSON file into one or more videos',
+      '',
+      'Run rollberry --help for more information.',
+    ].join('\n'),
   );
 }
 
-function parseWaitFor(rawWaitFor: string): WaitForCondition {
-  if (rawWaitFor === 'load') {
-    return { kind: 'load' };
-  }
-
-  if (rawWaitFor.startsWith('selector:')) {
-    const selector = rawWaitFor.slice('selector:'.length).trim();
-    if (!selector) {
-      throw new Error(
-        '--wait-for selector:<css> requires a non-empty CSS selector.',
-      );
-    }
-
-    return {
-      kind: 'selector',
-      selector,
-    };
-  }
-
-  if (rawWaitFor.startsWith('ms:')) {
-    return {
-      kind: 'delay',
-      ms: parsePositiveInt(rawWaitFor.slice('ms:'.length)),
-    };
-  }
-
-  throw new Error(
-    `--wait-for must be "load", "selector:<css>", or "ms:<n>": ${rawWaitFor}`,
+function createUnknownSubcommandError(command: string): CliError {
+  return new CliError(
+    [
+      `Unknown subcommand: ${command}`,
+      '',
+      'Available commands:',
+      '  capture    Capture a scroll video from one or more URLs',
+      '  render     Render a project JSON file into one or more videos',
+      '',
+      'Run rollberry --help for more information.',
+    ].join('\n'),
   );
 }

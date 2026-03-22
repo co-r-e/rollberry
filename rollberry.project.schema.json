@@ -1,0 +1,474 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://co-r-e.github.io/rollberry/rollberry.project.schema.json",
+  "title": "Rollberry Project",
+  "type": "object",
+  "required": ["scenes"],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "name": {
+      "type": "string"
+    },
+    "summaryManifest": {
+      "type": "string"
+    },
+    "defaults": {
+      "$ref": "#/$defs/defaults"
+    },
+    "scenes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/scene"
+      }
+    },
+    "outputs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/output"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "waitFor": {
+      "type": "string",
+      "pattern": "^(load|selector:.+|ms:[0-9]+)$"
+    },
+    "motion": {
+      "type": "string",
+      "enum": ["ease-in-out-sine", "linear"]
+    },
+    "selectorAction": {
+      "type": "object",
+      "required": ["type", "selector"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["click", "hover", "scroll-to"]
+        },
+        "selector": {
+          "type": "string"
+        },
+        "block": {
+          "type": "string",
+          "enum": ["start", "center", "end"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "typeAction": {
+      "type": "object",
+      "required": ["type", "selector", "text"],
+      "properties": {
+        "type": {
+          "const": "type"
+        },
+        "selector": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "clear": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "pressAction": {
+      "type": "object",
+      "required": ["type", "key"],
+      "properties": {
+        "type": {
+          "const": "press"
+        },
+        "key": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "waitAction": {
+      "type": "object",
+      "required": ["type", "ms"],
+      "properties": {
+        "type": {
+          "const": "wait"
+        },
+        "ms": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "setupAction": {
+      "oneOf": [
+        { "$ref": "#/$defs/waitAction" },
+        { "$ref": "#/$defs/selectorAction" },
+        { "$ref": "#/$defs/typeAction" },
+        { "$ref": "#/$defs/pressAction" }
+      ]
+    },
+    "timelineScroll": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "const": "scroll"
+        },
+        "duration": {
+          "oneOf": [
+            { "type": "number", "exclusiveMinimum": 0 },
+            { "const": "auto" }
+          ]
+        },
+        "motion": {
+          "$ref": "#/$defs/motion"
+        },
+        "to": {
+          "oneOf": [{ "type": "number", "minimum": 0 }, { "const": "bottom" }]
+        },
+        "by": {
+          "type": "number"
+        },
+        "toSelector": {
+          "type": "string"
+        },
+        "block": {
+          "type": "string",
+          "enum": ["start", "center", "end"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "timelinePause": {
+      "type": "object",
+      "required": ["type", "duration"],
+      "properties": {
+        "type": {
+          "const": "pause"
+        },
+        "duration": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "timelineWait": {
+      "type": "object",
+      "required": ["type", "ms"],
+      "properties": {
+        "type": {
+          "const": "wait"
+        },
+        "ms": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "timelineAction": {
+      "allOf": [
+        {
+          "oneOf": [
+            { "$ref": "#/$defs/selectorAction" },
+            { "$ref": "#/$defs/typeAction" },
+            { "$ref": "#/$defs/pressAction" }
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "holdAfterSeconds": {
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        }
+      ]
+    },
+    "timelineStep": {
+      "oneOf": [
+        { "$ref": "#/$defs/timelineScroll" },
+        { "$ref": "#/$defs/timelinePause" },
+        { "$ref": "#/$defs/timelineWait" },
+        { "$ref": "#/$defs/timelineAction" }
+      ]
+    },
+    "scene": {
+      "type": "object",
+      "required": ["url"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "duration": {
+          "oneOf": [
+            { "type": "number", "exclusiveMinimum": 0 },
+            { "const": "auto" }
+          ]
+        },
+        "motion": {
+          "$ref": "#/$defs/motion"
+        },
+        "waitFor": {
+          "$ref": "#/$defs/waitFor"
+        },
+        "hideSelectors": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "holdAfterSeconds": {
+          "type": "number",
+          "minimum": 0
+        },
+        "actions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/setupAction" }
+        },
+        "timeline": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/timelineStep" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "defaults": {
+      "type": "object",
+      "properties": {
+        "viewport": {
+          "type": "string",
+          "pattern": "^[0-9]+x[0-9]+$"
+        },
+        "fps": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 120
+        },
+        "duration": {
+          "oneOf": [
+            { "type": "number", "exclusiveMinimum": 0 },
+            { "const": "auto" }
+          ]
+        },
+        "motion": {
+          "$ref": "#/$defs/motion"
+        },
+        "timeoutMs": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "waitFor": {
+          "$ref": "#/$defs/waitFor"
+        },
+        "hideSelectors": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "holdAfterSeconds": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "audio": {
+      "type": "object",
+      "required": ["path"],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "volume": {
+          "type": "number",
+          "minimum": 0
+        },
+        "loop": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "subtitles": {
+      "type": "object",
+      "required": ["path"],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["soft", "burn-in"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "transition": {
+      "type": "object",
+      "required": ["type", "duration"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["fade-in", "crossfade"]
+        },
+        "duration": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "intermediateVideo": {
+      "type": "object",
+      "properties": {
+        "preset": {
+          "type": "string",
+          "enum": [
+            "ultrafast",
+            "superfast",
+            "veryfast",
+            "faster",
+            "fast",
+            "medium",
+            "slow",
+            "slower",
+            "veryslow",
+            "placebo"
+          ]
+        },
+        "crf": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 51
+        }
+      },
+      "additionalProperties": false
+    },
+    "intermediateArtifact": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "mp4"
+        },
+        "preset": {
+          "type": "string",
+          "enum": [
+            "ultrafast",
+            "superfast",
+            "veryfast",
+            "faster",
+            "fast",
+            "medium",
+            "slow",
+            "slower",
+            "veryslow",
+            "placebo"
+          ]
+        },
+        "crf": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 51
+        }
+      },
+      "additionalProperties": false
+    },
+    "finalVideo": {
+      "type": "object",
+      "properties": {
+        "preset": {
+          "type": "string",
+          "enum": [
+            "ultrafast",
+            "superfast",
+            "veryfast",
+            "faster",
+            "fast",
+            "medium",
+            "slow",
+            "slower",
+            "veryslow",
+            "placebo"
+          ]
+        },
+        "deadline": {
+          "type": "string",
+          "enum": ["best", "good", "realtime"]
+        },
+        "crf": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 63
+        }
+      },
+      "additionalProperties": false
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "out": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string",
+          "enum": ["mp4", "webm"]
+        },
+        "manifest": {
+          "type": "string"
+        },
+        "logFile": {
+          "type": "string"
+        },
+        "viewport": {
+          "type": "string",
+          "pattern": "^[0-9]+x[0-9]+$"
+        },
+        "fps": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 120
+        },
+        "debugFramesDir": {
+          "type": "string"
+        },
+        "audio": {
+          "$ref": "#/$defs/audio"
+        },
+        "subtitles": {
+          "$ref": "#/$defs/subtitles"
+        },
+        "transition": {
+          "$ref": "#/$defs/transition"
+        },
+        "intermediateVideo": {
+          "$ref": "#/$defs/intermediateVideo"
+        },
+        "intermediateArtifact": {
+          "$ref": "#/$defs/intermediateArtifact"
+        },
+        "finalVideo": {
+          "$ref": "#/$defs/finalVideo"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

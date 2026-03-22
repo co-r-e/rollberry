@@ -10,14 +10,15 @@ import {
   CliError,
   formatUsage,
   HelpRequest,
-  parseCliArgs,
+  parseCommandArgs,
   VersionRequest,
 } from './options.js';
 import { runCaptureCommand } from './run-capture.js';
+import { runRenderCommand } from './run-render.js';
 
 async function main(): Promise<void> {
   try {
-    const options = parseCliArgs();
+    const command = parseCommandArgs();
 
     const controller = new AbortController();
     const onSignal = () => {
@@ -29,37 +30,52 @@ async function main(): Promise<void> {
     const progress = createProgressReporter();
 
     try {
-      const result = await runCaptureCommand(
-        options,
-        progress,
-        controller.signal,
-      );
+      if (command.kind === 'capture') {
+        const result = await runCaptureCommand(
+          command.options,
+          progress,
+          controller.signal,
+        );
 
-      process.stdout.write(`${result.capture.outPath}\n`);
+        process.stdout.write(`${result.capture.outPath}\n`);
+        process.stderr.write(
+          `${formatOutputSummary({
+            label: 'Capture complete',
+            outPath: result.capture.outPath,
+            durationSeconds: result.capture.durationSeconds,
+            frameCount: result.capture.frameCount,
+            fps: command.options.fps,
+            sceneCount: result.capture.pages.length,
+            manifestPath: result.manifestPath,
+          })}\n`,
+        );
+      } else {
+        const result = await runRenderCommand(
+          command.options,
+          progress,
+          controller.signal,
+        );
 
-      const fileName = basename(result.capture.outPath);
-      let fileSizeStr = '';
-      try {
-        const stat = statSync(result.capture.outPath);
-        fileSizeStr = formatFileSize(stat.size);
-      } catch {
-        // File size unavailable
+        process.stdout.write(
+          `${result.outputs.map((output) => output.capture.outPath).join('\n')}\n`,
+        );
+
+        const blocks = result.outputs.map((output) =>
+          formatOutputSummary({
+            label: `Render complete: ${output.name}`,
+            outPath: output.capture.outPath,
+            durationSeconds: output.capture.durationSeconds,
+            frameCount: output.capture.frameCount,
+            fps: output.fps,
+            sceneCount: output.capture.pages.length,
+            manifestPath: output.manifestPath,
+          }),
+        );
+
+        process.stderr.write(
+          `\n${blocks.join('\n\n')}\n  Summary:   ${basename(result.summaryManifestPath)}\n`,
+        );
       }
-
-      const lines = [
-        '',
-        `Capture complete: ${fileName}`,
-        `  Duration:  ${result.capture.durationSeconds.toFixed(1)}s (${result.capture.frameCount} frames at ${options.fps}fps)`,
-      ];
-      if (fileSizeStr) {
-        lines.push(`  File size: ${fileSizeStr}`);
-      }
-      if (result.capture.pages.length > 1) {
-        lines.push(`  Pages:     ${result.capture.pages.length}`);
-      }
-      lines.push(`  Manifest:  ${basename(result.manifestPath)}`);
-
-      process.stderr.write(`${lines.join('\n')}\n`);
     } finally {
       process.off('SIGINT', onSignal);
       process.off('SIGTERM', onSignal);
@@ -95,6 +111,40 @@ async function main(): Promise<void> {
     );
     process.exitCode = 1;
   }
+}
+
+function formatOutputSummary(input: {
+  label: string;
+  outPath: string;
+  durationSeconds: number;
+  frameCount: number;
+  fps: number;
+  sceneCount: number;
+  manifestPath: string;
+}): string {
+  const fileName = basename(input.outPath);
+  let fileSizeStr = '';
+  try {
+    const stat = statSync(input.outPath);
+    fileSizeStr = formatFileSize(stat.size);
+  } catch {
+    // File size unavailable
+  }
+
+  const lines = [
+    '',
+    `${input.label}: ${fileName}`,
+    `  Duration:  ${input.durationSeconds.toFixed(1)}s (${input.frameCount} frames at ${input.fps.toFixed(0)}fps)`,
+  ];
+  if (fileSizeStr) {
+    lines.push(`  File size: ${fileSizeStr}`);
+  }
+  if (input.sceneCount > 1) {
+    lines.push(`  Scenes:    ${input.sceneCount}`);
+  }
+  lines.push(`  Manifest:  ${basename(input.manifestPath)}`);
+
+  return lines.join('\n');
 }
 
 await main();

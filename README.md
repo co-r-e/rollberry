@@ -1,9 +1,11 @@
 # Rollberry
 
-Rollberry is an MIT-licensed open source CLI for turning web pages into
-smooth top-to-bottom scroll videos. It captures one or more URLs into a single
-MP4. It is built for real browser capture, works with normal URLs and
-`localhost`, and is published for direct `npx` usage.
+Rollberry is an MIT-licensed open source CLI and Node API for turning web
+pages into smooth top-to-bottom scroll videos. It can capture one or more
+URLs into a single MP4, or render a project JSON file into multiple output
+variants such as desktop and mobile. It is built for real browser capture,
+works with normal URLs and `localhost`, and is published for direct `npx`
+usage.
 
 Maintained by CORe Inc.
 
@@ -28,6 +30,13 @@ npx rollberry capture http://localhost:3000 \
 
 On the first run, if Playwright Chromium is missing, Rollberry installs it
 automatically. `ffmpeg` is not auto-installed.
+
+For project-based rendering, start from the bundled sample:
+
+```bash
+cp rollberry.project.sample.json rollberry.project.json
+npx rollberry render ./rollberry.project.json
+```
 
 ## Using With npx
 
@@ -61,6 +70,12 @@ npx rollberry capture https://playwright.dev \
   --duration 8
 ```
 
+Render a project file with multiple outputs:
+
+```bash
+npx rollberry render ./rollberry.project.json
+```
+
 Notes:
 
 - `npx` downloads the published CLI package automatically
@@ -74,10 +89,12 @@ Notes:
 Each run writes:
 
 - `video.mp4`: the rendered capture
-- `video.manifest.json`: environment, options, result, and failure details
+- `video.manifest.json`: environment, scene definitions, capture metrics, artifact metrics, and failure details
 - `video.log.jsonl`: structured operational logs
 
 You can override the sidecar paths with `--manifest` and `--log-file`.
+Project renders write the same sidecars for each configured output, plus a
+project-level `*.render-summary.json`.
 
 ## Common Examples
 
@@ -133,10 +150,162 @@ npx rollberry capture http://localhost:3000 \
   --debug-frames-dir ./artifacts/debug-frames
 ```
 
+Render a project file into desktop and mobile outputs:
+
+```bash
+npx rollberry render ./rollberry.project.json
+```
+
+Render only one named output from a project:
+
+```bash
+npx rollberry render ./rollberry.project.json --output mobile
+```
+
+## Project Rendering
+
+Use `render` when you want scene-by-scene control and multiple outputs from one
+config file. `actions` run before capture as setup. `timeline` runs during the
+capture itself and lets you interleave scroll, pause, and interactions inside
+one scene.
+
+```json
+{
+  "$schema": "./rollberry.project.schema.json",
+  "schemaVersion": 1,
+  "summaryManifest": "./artifacts/demo.render-summary.json",
+  "defaults": {
+    "fps": 60,
+    "viewport": "1440x900",
+    "waitFor": "selector:body",
+    "hideSelectors": ["#cookie-banner"]
+  },
+  "scenes": [
+    {
+      "name": "home",
+      "url": "http://localhost:3000",
+      "actions": [
+        { "type": "click", "selector": "[data-open-menu]" },
+        { "type": "wait", "ms": 300 }
+      ],
+      "timeline": [
+        { "type": "pause", "duration": 0.4 },
+        {
+          "type": "click",
+          "selector": "[data-open-menu]",
+          "holdAfterSeconds": 0.4
+        },
+        { "type": "scroll", "toSelector": "#pricing", "duration": 1.4 },
+        { "type": "scroll", "to": "bottom", "duration": "auto" }
+      ],
+      "holdAfterSeconds": 0.75
+    },
+    {
+      "name": "pricing",
+      "url": "http://localhost:3000/pricing"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "desktop",
+      "viewport": "1440x900",
+      "out": "./artifacts/demo-desktop.mp4",
+      "audio": {
+        "path": "./assets/demo-narration.wav",
+        "volume": 0.8,
+        "loop": true
+      },
+      "subtitles": {
+        "path": "./assets/demo-captions.vtt",
+        "mode": "burn-in"
+      },
+      "transition": {
+        "type": "crossfade",
+        "duration": 0.25
+      },
+      "intermediateArtifact": {
+        "format": "mp4",
+        "preset": "veryfast",
+        "crf": 20
+      },
+      "finalVideo": {
+        "preset": "medium",
+        "crf": 19
+      }
+    },
+    {
+      "name": "mobile",
+      "viewport": "430x932",
+      "out": "./artifacts/demo-mobile.webm",
+      "format": "webm",
+      "subtitles": {
+        "path": "./assets/demo-captions.vtt",
+        "mode": "soft"
+      },
+      "transition": {
+        "type": "crossfade",
+        "duration": 0.25
+      },
+      "intermediateArtifact": {
+        "format": "mp4",
+        "preset": "fast",
+        "crf": 22
+      },
+      "finalVideo": {
+        "deadline": "best",
+        "crf": 30
+      }
+    }
+  ]
+}
+```
+
+Supported setup actions:
+
+- `wait`
+- `click`
+- `hover`
+- `press`
+- `type`
+- `scroll-to`
+
+Supported timeline segments:
+
+- `pause`
+- `wait`
+- `scroll`
+- `click`
+- `hover`
+- `press`
+- `type`
+- `scroll-to`
+
+Supported output extensions:
+
+- `mp4`
+- `webm`
+
+Supported media extensions:
+
+- output-level background audio via `audio.path`
+- output-level subtitles via `subtitles.path`
+- `subtitles.mode: "soft"` for `mp4` and `webm`
+- `subtitles.mode: "burn-in"` for `mp4` and `webm`
+- `.srt`, `.vtt`, and `.webvtt` subtitle inputs
+- output-level `transition.type: "fade-in"`
+- output-level `transition.type: "crossfade"` between adjacent scenes
+- output-level `intermediateArtifact.format` / `preset` / `crf` for scene clip profiles
+- output-level `finalVideo.preset` / `finalVideo.crf` for `mp4` encode control
+- output-level `finalVideo.deadline` / `finalVideo.crf` for `webm` encode control
+- project-level summary manifest via `summaryManifest`
+- render manifest separates `captureMetrics` and `artifactMetrics`
+- `crossfade` uses `ffprobe`-backed clip timing when available and fails fast if scene clip probing is unavailable
+
 ## CLI Options
 
 ```text
 rollberry capture <url...>
+rollberry render <project.json>
 
 --out <file>                Output MP4 path
 --viewport <WxH>            Viewport size, example: 1440x900
@@ -150,6 +319,10 @@ rollberry capture <url...>
 --debug-frames-dir <dir>    Save raw PNG frames
 --manifest <file>           Manifest JSON output path
 --log-file <file>           Log JSONL output path
+
+render:
+--output <name>             Render only the named output (repeatable)
+--force                     Overwrite configured output files
 ```
 
 ## Localhost Behavior
@@ -207,6 +380,7 @@ Run from the repository:
 
 ```bash
 corepack pnpm dev -- capture http://localhost:3000 --out ./artifacts/demo.mp4
+corepack pnpm dev -- render ./rollberry.project.sample.json
 ```
 
 Run the regression suite:

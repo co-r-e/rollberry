@@ -3,6 +3,9 @@ import {
   AUTO_DURATION_MIN_SECONDS,
   AUTO_DURATION_PIXELS_PER_SECOND,
   MAX_TOTAL_FRAMES,
+  TIMELINE_AUTO_DURATION_MAX_SECONDS,
+  TIMELINE_AUTO_DURATION_MIN_SECONDS,
+  TIMELINE_AUTO_DURATION_PIXELS_PER_SECOND,
 } from './constants.js';
 import type { MotionCurve } from './types.js';
 import { clamp } from './utils.js';
@@ -50,6 +53,14 @@ export function buildScrollFrames(options: {
 
     return Number((options.maxScroll * easedProgress).toFixed(3));
   });
+}
+
+export function resolveTimelineDurationSeconds(distance: number): number {
+  return clamp(
+    distance / TIMELINE_AUTO_DURATION_PIXELS_PER_SECOND,
+    TIMELINE_AUTO_DURATION_MIN_SECONDS,
+    TIMELINE_AUTO_DURATION_MAX_SECONDS,
+  );
 }
 
 function easeInOutSine(value: number): number {

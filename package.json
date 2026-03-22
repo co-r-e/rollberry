@@ -1,8 +1,13 @@
 {
   "name": "rollberry",
-  "version": "0.1.9",
+  "version": "0.2.0",
   "description": "CLI to capture smooth top-to-bottom scroll videos from web pages, including localhost URLs.",
   "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./package.json": "./package.json"
+  },
   "packageManager": "pnpm@10.15.0",
   "author": "CORe Inc.",
   "license": "MIT",
@@ -29,7 +34,9 @@
     "LICENSE",
     "README.md",
     "SECURITY.md",
-    "regression.sample.json"
+    "regression.sample.json",
+    "rollberry.project.schema.json",
+    "rollberry.project.sample.json"
   ],
   "bin": {
     "rollberry": "dist/cli.js"

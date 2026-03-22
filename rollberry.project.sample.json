@@ -1,0 +1,92 @@
+{
+  "$schema": "./rollberry.project.schema.json",
+  "schemaVersion": 1,
+  "name": "Rollberry Demo Project",
+  "summaryManifest": "./artifacts/demo.render-summary.json",
+  "defaults": {
+    "fps": 60,
+    "viewport": "1440x900",
+    "duration": "auto",
+    "waitFor": "selector:body",
+    "hideSelectors": ["#cookie-banner", ".intercom-lightweight-app"]
+  },
+  "scenes": [
+    {
+      "name": "homepage",
+      "url": "http://localhost:3000",
+      "actions": [{ "type": "wait", "ms": 300 }],
+      "timeline": [
+        { "type": "pause", "duration": 0.4 },
+        {
+          "type": "click",
+          "selector": "[data-open-menu]",
+          "holdAfterSeconds": 0.4
+        },
+        { "type": "scroll", "toSelector": "#pricing", "duration": 1.4 },
+        { "type": "scroll", "to": "bottom", "duration": "auto" }
+      ],
+      "holdAfterSeconds": 0.75
+    },
+    {
+      "name": "pricing",
+      "url": "http://localhost:3000/pricing"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "desktop",
+      "viewport": "1440x900",
+      "out": "./artifacts/demo-desktop.mp4",
+      "audio": {
+        "path": "./assets/demo-narration.wav",
+        "volume": 0.8,
+        "loop": true
+      },
+      "subtitles": {
+        "path": "./assets/demo-captions.vtt",
+        "mode": "burn-in"
+      },
+      "transition": {
+        "type": "crossfade",
+        "duration": 0.25
+      },
+      "intermediateArtifact": {
+        "format": "mp4",
+        "preset": "veryfast",
+        "crf": 20
+      },
+      "finalVideo": {
+        "preset": "medium",
+        "crf": 19
+      }
+    },
+    {
+      "name": "mobile",
+      "viewport": "430x932",
+      "out": "./artifacts/demo-mobile.webm",
+      "format": "webm",
+      "audio": {
+        "path": "./assets/demo-narration.wav",
+        "volume": 0.7,
+        "loop": true
+      },
+      "subtitles": {
+        "path": "./assets/demo-captions.vtt",
+        "mode": "soft"
+      },
+      "transition": {
+        "type": "crossfade",
+        "duration": 0.25
+      },
+      "intermediateArtifact": {
+        "format": "mp4",
+        "preset": "fast",
+        "crf": 22
+      },
+      "finalVideo": {
+        "deadline": "best",
+        "crf": 30
+      }
+    }
+  ]
+}

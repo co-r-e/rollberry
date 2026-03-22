@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { CliError, parseCliArgs } from '../../src/options.js';
+import { CliError, parseCliArgs, parseCommandArgs } from '../../src/options.js';
 
 describe('parseCliArgs', () => {
   it('parses localhost capture options', () => {
@@ -96,5 +96,26 @@ describe('parseCliArgs', () => {
 
     expect(options.manifestPath).toMatch(/logs\/custom-manifest\.json$/u);
     expect(options.logFilePath).toMatch(/logs\/custom-log\.jsonl$/u);
+  });
+
+  it('parses render command options', () => {
+    const parsed = parseCommandArgs([
+      'render',
+      './rollberry.project.json',
+      '--output',
+      'desktop',
+      '--output',
+      'mobile',
+      '--force',
+    ]);
+
+    expect(parsed.kind).toBe('render');
+    if (parsed.kind !== 'render') {
+      throw new Error('Expected render command.');
+    }
+
+    expect(parsed.options.projectPath).toMatch(/rollberry\.project\.json$/u);
+    expect(parsed.options.outputNames).toEqual(['desktop', 'mobile']);
+    expect(parsed.options.force).toBe(true);
   });
 });
