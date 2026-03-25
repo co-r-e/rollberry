@@ -93,24 +93,8 @@ export async function waitForAnimationFrames(
 }
 
 export async function measurePage(page: Page): Promise<PageMetrics> {
-  return page.evaluate(() => {
-    const body = document.body;
-    const root = document.documentElement;
-    const scrollHeight = Math.max(
-      body?.scrollHeight ?? 0,
-      body?.offsetHeight ?? 0,
-      root.scrollHeight,
-      root.offsetHeight,
-      root.clientHeight,
-    );
-    const viewportHeight = window.innerHeight || root.clientHeight;
-
-    return {
-      scrollHeight,
-      viewportHeight,
-      maxScroll: Math.max(0, scrollHeight - viewportHeight),
-    };
-  });
+  const { scrollTop: _, ...metrics } = await measurePageWithScrollTop(page);
+  return metrics;
 }
 
 export async function measurePageWithScrollTop(
@@ -132,7 +116,7 @@ export async function measurePageWithScrollTop(
       scrollHeight,
       viewportHeight,
       maxScroll: Math.max(0, scrollHeight - viewportHeight),
-      scrollTop: window.scrollY || window.pageYOffset || 0,
+      scrollTop: window.scrollY ?? 0,
     };
   });
 }

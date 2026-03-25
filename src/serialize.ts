@@ -6,7 +6,7 @@ import type {
   CaptureTimelineSegment,
 } from './capture/types.js';
 
-export interface SerializedError {
+interface SerializedError {
   name: string;
   message: string;
   stack?: string;
@@ -64,7 +64,7 @@ export function serializeTimelineSegment(
   }
 }
 
-export function serializeTimelineTarget(
+function serializeTimelineTarget(
   target: CaptureTimelineScrollTarget,
 ): Record<string, unknown> {
   switch (target.kind) {

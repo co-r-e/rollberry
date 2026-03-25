@@ -297,7 +297,6 @@ function buildStreamingFfmpegArgs(options: {
   if (options.subtitles?.mode === 'soft') {
     args.push('-i', options.subtitles.sourcePath);
     subtitleInputIndex = nextInputIndex;
-    nextInputIndex += 1;
   }
 
   args.push('-map', '0:v:0');

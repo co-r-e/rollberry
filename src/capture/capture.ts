@@ -546,9 +546,9 @@ async function captureTimelineFrames(input: {
     ),
   });
 
-  const initialMetrics = await measureTimelineMetrics(page);
-  maxObservedScrollHeight = initialMetrics.scrollHeight;
-  anyTruncated = initialMetrics.truncated;
+  let latestMetrics = await measureTimelineMetrics(page);
+  maxObservedScrollHeight = latestMetrics.scrollHeight;
+  anyTruncated = latestMetrics.truncated;
 
   await logger.info(
     'timeline.start',
@@ -575,12 +575,7 @@ async function captureTimelineFrames(input: {
 
     switch (segment.kind) {
       case 'scroll': {
-        const metrics = await measureTimelineMetrics(page);
-        maxObservedScrollHeight = Math.max(
-          maxObservedScrollHeight,
-          metrics.scrollHeight,
-        );
-        anyTruncated = anyTruncated || metrics.truncated;
+        const metrics = latestMetrics;
 
         const startScrollTop = metrics.scrollTop;
         const targetScrollTop = await resolveTimelineTargetScrollTop(
@@ -633,12 +628,12 @@ async function captureTimelineFrames(input: {
           progress?.onFrameRendered(index, relativeFrames.length);
         }
 
-        const postScrollMetrics = await measureTimelineMetrics(page);
+        latestMetrics = await measureTimelineMetrics(page);
         maxObservedScrollHeight = Math.max(
           maxObservedScrollHeight,
-          postScrollMetrics.scrollHeight,
+          latestMetrics.scrollHeight,
         );
-        anyTruncated = anyTruncated || postScrollMetrics.truncated;
+        anyTruncated = anyTruncated || latestMetrics.truncated;
         break;
       }
 
@@ -701,12 +696,12 @@ async function captureTimelineFrames(input: {
           sceneFrameCount += holdFrameCount;
         }
 
-        const postActionMetrics = await measureTimelineMetrics(page);
+        latestMetrics = await measureTimelineMetrics(page);
         maxObservedScrollHeight = Math.max(
           maxObservedScrollHeight,
-          postActionMetrics.scrollHeight,
+          latestMetrics.scrollHeight,
         );
-        anyTruncated = anyTruncated || postActionMetrics.truncated;
+        anyTruncated = anyTruncated || latestMetrics.truncated;
         break;
       }
     }
