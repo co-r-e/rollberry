@@ -1,3 +1,4 @@
+import { homedir } from 'node:os';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 
@@ -96,7 +97,7 @@ export function formatUsage(): string {
     '  rollberry --version | -V',
     '',
     'Capture Options:',
-    '  --out <file>                Output MP4 path (default: ./rollberry.mp4)',
+    '  --out <file>                Output MP4 path (default: ~/Downloads/rollberry.mp4)',
     '  --viewport <WxH>           Viewport size (default: 1440x900)',
     `  --fps <n>                  Frames per second (default: 60, max: ${MAX_FPS})`,
     '  --duration <seconds|auto>  Capture duration (default: auto)',
@@ -140,6 +141,10 @@ export function parseWithCliError<T>(
 
 export function resolveOutPath(path: string): string {
   return resolve(process.cwd(), path);
+}
+
+export function resolveDefaultOutPath(filename: string): string {
+  return resolve(homedir(), 'Downloads', filename);
 }
 
 export function deriveSidecarPath(path: string, suffix: string): string {
@@ -310,7 +315,9 @@ function parseCaptureArgs(args: string[]): CaptureOptions {
     );
   }
 
-  const outPath = resolveOutPath(parsed.values.out ?? DEFAULT_OUT_FILE);
+  const outPath = parsed.values.out
+    ? resolveOutPath(parsed.values.out)
+    : resolveDefaultOutPath(DEFAULT_OUT_FILE);
   const pageGapSeconds = parseWithCliError(
     parsed.values['page-gap'] ?? '0',
     parseNonNegativeNumber,
