@@ -45,11 +45,11 @@ export async function preflightMeasurePage(
     const nextMetrics = await measurePage(page);
     truncated = nextMetrics.scrollHeight > PREFLIGHT_MAX_SCROLL_HEIGHT;
 
-    if (nextMetrics.scrollHeight > metrics.scrollHeight) {
-      metrics = nextMetrics;
+    const grew = nextMetrics.scrollHeight > metrics.scrollHeight;
+    metrics = nextMetrics;
+    if (grew) {
       stableRounds = nextMetrics.maxScroll === 0 ? PREFLIGHT_STABLE_ROUNDS : 0;
     } else {
-      metrics = nextMetrics;
       stableRounds += 1;
     }
   }

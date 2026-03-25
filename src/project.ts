@@ -275,17 +275,17 @@ function parseScene(
     readOptionalString(rawScene, 'motion') ?? defaults.motion,
     `scenes[${index}].motion`,
   );
+  const rawWaitFor = readOptionalString(rawScene, 'waitFor');
+  const waitFor = rawWaitFor
+    ? parseWaitForField(rawWaitFor, `scenes[${index}].waitFor`)
+    : defaults.waitFor;
 
   return {
     name: readOptionalString(rawScene, 'name'),
     url,
     duration,
     motion,
-    waitFor: parseWaitForField(
-      readOptionalString(rawScene, 'waitFor') ??
-        stringifyWaitFor(defaults.waitFor),
-      `scenes[${index}].waitFor`,
-    ),
+    waitFor,
     hideSelectors: dedupeSelectors([
       ...defaults.hideSelectors,
       ...sceneHideSelectors,
@@ -437,6 +437,10 @@ function parseOutput(input: {
     format,
     `outputs[${index}].finalVideo`,
   );
+  const rawViewport = readOptionalString(rawOutput, 'viewport');
+  const viewport = rawViewport
+    ? parseViewportField(rawViewport, `outputs[${index}].viewport`)
+    : defaults.viewport;
 
   return {
     name,
@@ -444,11 +448,7 @@ function parseOutput(input: {
     format,
     manifestPath,
     logFilePath,
-    viewport: parseViewportField(
-      readOptionalString(rawOutput, 'viewport') ??
-        stringifyViewport(defaults.viewport),
-      `outputs[${index}].viewport`,
-    ),
+    viewport,
     fps: parseFps(
       readOptionalNumber(rawOutput, 'fps') ?? defaults.fps,
       `outputs[${index}].fps`,
@@ -1181,21 +1181,6 @@ function parseScrollAlignment(
   }
 
   throw new CliError(`${fieldPath} must be one of: start, center, end.`);
-}
-
-function stringifyViewport(viewport: Viewport): string {
-  return `${viewport.width}x${viewport.height}`;
-}
-
-function stringifyWaitFor(waitFor: WaitForCondition): string {
-  switch (waitFor.kind) {
-    case 'load':
-      return 'load';
-    case 'selector':
-      return `selector:${waitFor.selector}`;
-    case 'delay':
-      return `ms:${waitFor.ms}`;
-  }
 }
 
 function dedupeSelectors(selectors: string[]): string[] {
