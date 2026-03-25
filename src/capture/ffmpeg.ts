@@ -80,9 +80,13 @@ export async function createVideoEncoder(options: {
     spawnError = error;
   });
 
+  const STDERR_MAX_LENGTH = 8192;
   ffmpeg.stderr.setEncoding('utf8');
-  ffmpeg.stderr.on('data', (chunk) => {
+  ffmpeg.stderr.on('data', (chunk: string) => {
     stderr += chunk;
+    if (stderr.length > STDERR_MAX_LENGTH) {
+      stderr = stderr.slice(-STDERR_MAX_LENGTH);
+    }
   });
 
   return {

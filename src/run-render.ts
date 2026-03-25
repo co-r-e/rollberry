@@ -261,7 +261,6 @@ export async function runRenderCommand(
           probe: sceneProbe,
         });
         if (sceneProbeWarning) {
-          warningCodes.add(`scene_clip_probe_${sceneProbe.status}`);
           await logger.warn(
             sceneProbeWarning.event,
             sceneProbeWarning.message,
@@ -327,7 +326,6 @@ export async function runRenderCommand(
         probe: finalProbe,
       });
       if (outputProbeWarning) {
-        warningCodes.add(`output_probe_${finalProbe.status}`);
         await logger.warn(
           outputProbeWarning.event,
           outputProbeWarning.message,

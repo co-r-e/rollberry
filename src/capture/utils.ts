@@ -112,3 +112,27 @@ export async function measurePage(page: Page): Promise<PageMetrics> {
     };
   });
 }
+
+export async function measurePageWithScrollTop(
+  page: Page,
+): Promise<PageMetrics & { scrollTop: number }> {
+  return page.evaluate(() => {
+    const body = document.body;
+    const root = document.documentElement;
+    const scrollHeight = Math.max(
+      body?.scrollHeight ?? 0,
+      body?.offsetHeight ?? 0,
+      root.scrollHeight,
+      root.offsetHeight,
+      root.clientHeight,
+    );
+    const viewportHeight = window.innerHeight || root.clientHeight;
+
+    return {
+      scrollHeight,
+      viewportHeight,
+      maxScroll: Math.max(0, scrollHeight - viewportHeight),
+      scrollTop: window.scrollY || window.pageYOffset || 0,
+    };
+  });
+}

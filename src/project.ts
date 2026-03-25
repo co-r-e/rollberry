@@ -35,9 +35,6 @@ import {
   DEFAULT_VIEWPORT,
   deriveSidecarPath,
   parseMotion,
-  parseNonNegativeNumber,
-  parsePositiveInt,
-  parsePositiveNumber,
   parseViewport,
   parseWaitFor,
   type RenderCliOptions,
@@ -544,7 +541,7 @@ function parseTimelineSegment(
   if (type === 'scroll') {
     return {
       kind: 'scroll',
-      duration: parseOptionalDurationField(
+      duration: parseDurationField(
         rawStep,
         `${fieldPath}.duration`,
         defaults.duration,
@@ -753,18 +750,6 @@ function parseDurationField(
   return parsePositiveNumberField(value, fieldPath);
 }
 
-function parseOptionalDurationField(
-  rawObject: Record<string, unknown>,
-  fieldPath: string,
-  fallback: number | 'auto',
-): number | 'auto' {
-  if (!Object.hasOwn(rawObject, 'duration')) {
-    return fallback;
-  }
-
-  return parseDurationField(rawObject, fieldPath, fallback);
-}
-
 function parseMotionField(rawValue: string, fieldPath: string): MotionCurve {
   try {
     return parseMotion(rawValue);
@@ -825,33 +810,30 @@ function parseHideSelectors(rawValue: unknown, fieldPath: string): string[] {
 }
 
 function parsePositiveIntField(value: number, fieldPath: string): number {
-  try {
-    return parsePositiveInt(String(value));
-  } catch (error) {
+  if (!Number.isInteger(value) || value <= 0) {
     throw new CliError(
-      `${fieldPath} is invalid: ${error instanceof Error ? error.message : 'invalid integer'}`,
+      `${fieldPath} is invalid: Expected a positive integer (e.g. "60"): ${value}`,
     );
   }
+  return value;
 }
 
 function parsePositiveNumberField(value: number, fieldPath: string): number {
-  try {
-    return parsePositiveNumber(String(value));
-  } catch (error) {
+  if (!Number.isFinite(value) || value <= 0) {
     throw new CliError(
-      `${fieldPath} is invalid: ${error instanceof Error ? error.message : 'invalid number'}`,
+      `${fieldPath} is invalid: Expected a positive number (e.g. "5.0"): ${value}`,
     );
   }
+  return value;
 }
 
 function parseNonNegativeField(value: number, fieldPath: string): number {
-  try {
-    return parseNonNegativeNumber(String(value));
-  } catch (error) {
+  if (!Number.isFinite(value) || value < 0) {
     throw new CliError(
-      `${fieldPath} is invalid: ${error instanceof Error ? error.message : 'invalid non-negative number'}`,
+      `${fieldPath} is invalid: Expected a non-negative number (e.g. "0" or "1.5"): ${value}`,
     );
   }
+  return value;
 }
 
 function parseFps(value: number, fieldPath: string): number {

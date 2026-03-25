@@ -38,6 +38,7 @@ import {
   ensureDirectory,
   ensureParentDirectory,
   fileExists,
+  measurePageWithScrollTop,
   sanitizeUrl,
   waitForAnimationFrames,
 } from './utils.js';
@@ -133,7 +134,6 @@ export async function captureSceneVideo(
 
     const pages: PageCaptureResult[] = [];
     let totalFrameCount = 0;
-    let totalDurationSeconds = 0;
     let frameOffset = 0;
     let anyTruncated = false;
 
@@ -157,7 +157,6 @@ export async function captureSceneVideo(
 
       pages.push(pageResult);
       totalFrameCount += pageResult.frameCount;
-      totalDurationSeconds += pageResult.durationSeconds;
       frameOffset += pageResult.frameCount;
       anyTruncated = anyTruncated || pageResult.truncated;
 
@@ -176,7 +175,6 @@ export async function captureSceneVideo(
         });
 
         totalFrameCount += gapFrameCount;
-        totalDurationSeconds += gapFrameCount / job.fps;
         frameOffset += gapFrameCount;
       }
     }
@@ -191,7 +189,7 @@ export async function captureSceneVideo(
     return {
       outPath: job.outPath,
       frameCount: totalFrameCount,
-      durationSeconds: totalDurationSeconds,
+      durationSeconds: totalFrameCount / job.fps,
       pages,
       truncated: anyTruncated,
     };
@@ -539,6 +537,15 @@ async function captureTimelineFrames(input: {
   let maxObservedScrollHeight = 0;
   let anyTruncated = false;
 
+  const reservedGap = getReservedGapFrames({
+    fps: job.fps,
+    gapSeconds: scene.holdAfterSeconds,
+    shouldWriteGap: shouldWriteHoldAfterScene(
+      job,
+      sceneIndex === totalScenes - 1,
+    ),
+  });
+
   const initialMetrics = await measureTimelineMetrics(page);
   maxObservedScrollHeight = initialMetrics.scrollHeight;
   anyTruncated = initialMetrics.truncated;
@@ -596,17 +603,7 @@ async function captureTimelineFrames(input: {
         });
 
         assertWithinFrameLimit(
-          frameOffset +
-            sceneFrameCount +
-            relativeFrames.length +
-            getReservedGapFrames({
-              fps: job.fps,
-              gapSeconds: scene.holdAfterSeconds,
-              shouldWriteGap: shouldWriteHoldAfterScene(
-                job,
-                sceneIndex === totalScenes - 1,
-              ),
-            }),
+          frameOffset + sceneFrameCount + relativeFrames.length + reservedGap,
         );
 
         for (const [index, relativeScrollTop] of relativeFrames.entries()) {
@@ -654,17 +651,7 @@ async function captureTimelineFrames(input: {
         );
 
         assertWithinFrameLimit(
-          frameOffset +
-            sceneFrameCount +
-            pauseFrameCount +
-            getReservedGapFrames({
-              fps: job.fps,
-              gapSeconds: scene.holdAfterSeconds,
-              shouldWriteGap: shouldWriteHoldAfterScene(
-                job,
-                sceneIndex === totalScenes - 1,
-              ),
-            }),
+          frameOffset + sceneFrameCount + pauseFrameCount + reservedGap,
         );
 
         await writeRepeatedFrames({
@@ -688,17 +675,7 @@ async function captureTimelineFrames(input: {
         const totalActionFrames = 1 + holdFrameCount;
 
         assertWithinFrameLimit(
-          frameOffset +
-            sceneFrameCount +
-            totalActionFrames +
-            getReservedGapFrames({
-              fps: job.fps,
-              gapSeconds: scene.holdAfterSeconds,
-              shouldWriteGap: shouldWriteHoldAfterScene(
-                job,
-                sceneIndex === totalScenes - 1,
-              ),
-            }),
+          frameOffset + sceneFrameCount + totalActionFrames + reservedGap,
         );
 
         await writeFrameToOutput({
@@ -837,24 +814,7 @@ async function measureTimelineMetrics(page: Page): Promise<{
   scrollTop: number;
   truncated: boolean;
 }> {
-  const raw = await page.evaluate(() => {
-    const body = document.body;
-    const root = document.documentElement;
-    const scrollHeight = Math.max(
-      body?.scrollHeight ?? 0,
-      body?.offsetHeight ?? 0,
-      root.scrollHeight,
-      root.offsetHeight,
-      root.clientHeight,
-    );
-    const viewportHeight = window.innerHeight || root.clientHeight;
-    return {
-      scrollHeight,
-      viewportHeight,
-      scrollTop: window.scrollY || window.pageYOffset || 0,
-    };
-  });
-
+  const raw = await measurePageWithScrollTop(page);
   const truncated = raw.scrollHeight > PREFLIGHT_MAX_SCROLL_HEIGHT;
   const scrollHeight = Math.min(raw.scrollHeight, PREFLIGHT_MAX_SCROLL_HEIGHT);
   const maxScroll = Math.max(0, scrollHeight - raw.viewportHeight);
