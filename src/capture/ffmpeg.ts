@@ -193,7 +193,6 @@ export async function probeVideoFile(
     const { stdout } = await execFileAsync('ffprobe', [
       '-v',
       'error',
-      '-count_frames',
       '-print_format',
       'json',
       '-show_format',
@@ -204,7 +203,6 @@ export async function probeVideoFile(
       format?: { duration?: string };
       streams?: Array<{
         codec_type?: string;
-        nb_read_frames?: string;
         nb_frames?: string;
         duration?: string;
       }>;
@@ -228,9 +226,7 @@ export async function probeVideoFile(
       status: 'probed',
       result: {
         durationSeconds,
-        frameCount: parseFrameCount(
-          videoStream?.nb_read_frames ?? videoStream?.nb_frames,
-        ),
+        frameCount: parseFrameCount(videoStream?.nb_frames),
       },
     };
   } catch (error) {

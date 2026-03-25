@@ -1,5 +1,3 @@
-import { writeFile } from 'node:fs/promises';
-
 import { AbortError, captureVideo } from './capture/capture.js';
 import { createCaptureLogger } from './capture/logger.js';
 import type { ProgressReporter } from './capture/progress.js';
@@ -9,6 +7,7 @@ import type {
   CaptureRunResult,
 } from './capture/types.js';
 import { sanitizeUrl } from './capture/utils.js';
+import { serializeError, writeJsonFile } from './serialize.js';
 
 export async function runCaptureCommand(
   options: CaptureOptions,
@@ -43,7 +42,7 @@ export async function runCaptureCommand(
       result: capture,
     });
 
-    await writeManifest(options.manifestPath, manifest);
+    await writeJsonFile(options.manifestPath, manifest);
     await logger.info('capture.complete', 'Capture finished', {
       outPath: capture.outPath,
       frameCount: capture.frameCount,
@@ -81,23 +80,12 @@ export async function runCaptureCommand(
       message: manifest.error?.message,
       manifestPath: options.manifestPath,
     });
-    await writeManifest(options.manifestPath, manifest);
+    await writeJsonFile(options.manifestPath, manifest);
 
     throw error;
   } finally {
     await logger.close();
   }
-}
-
-async function writeManifest(
-  manifestPath: string,
-  manifest: CaptureManifest,
-): Promise<void> {
-  await writeFile(
-    manifestPath,
-    `${JSON.stringify(manifest, null, 2)}\n`,
-    'utf8',
-  );
 }
 
 function buildManifest(input: {
@@ -143,20 +131,5 @@ function buildManifest(input: {
     result: input.result,
     warnings: input.warnings,
     error: input.error ? serializeError(input.error) : undefined,
-  };
-}
-
-function serializeError(error: unknown): CaptureManifest['error'] {
-  if (error instanceof Error) {
-    return {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-    };
-  }
-
-  return {
-    name: 'Error',
-    message: typeof error === 'string' ? error : 'Unknown error',
   };
 }

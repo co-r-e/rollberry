@@ -1,5 +1,6 @@
 import type { Page } from 'playwright';
 
+import { resetScrollPosition } from './actions.js';
 import {
   MAX_PREFLIGHT_ITERATIONS,
   PREFLIGHT_MAX_SCROLL_HEIGHT,
@@ -53,10 +54,7 @@ export async function preflightMeasurePage(
     }
   }
 
-  await page.evaluate(() => {
-    window.scrollTo({ top: 0, behavior: 'auto' });
-  });
-  await waitForAnimationFrames(page);
+  await resetScrollPosition(page);
 
   const clampedScrollHeight = Math.min(
     metrics.scrollHeight,

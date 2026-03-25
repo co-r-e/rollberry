@@ -1,12 +1,9 @@
 import type { Page } from 'playwright';
 
+import { resetScrollPosition } from './actions.js';
 import { FONT_LOADING_TIMEOUT_MS, STABILIZE_DELAY_MS } from './constants.js';
 import type { WaitForCondition } from './types.js';
-import {
-  delay,
-  validateHideSelector,
-  waitForAnimationFrames,
-} from './utils.js';
+import { delay, validateHideSelector } from './utils.js';
 
 export async function stabilizePage(options: {
   page: Page;
@@ -20,10 +17,7 @@ export async function stabilizePage(options: {
   await waitForRequestedCondition(options.page, options.waitFor);
   await waitForFonts(options.page);
   await delay(STABILIZE_DELAY_MS);
-  await options.page.evaluate(() => {
-    window.scrollTo({ top: 0, behavior: 'auto' });
-  });
-  await waitForAnimationFrames(options.page);
+  await resetScrollPosition(options.page);
 }
 
 function buildStabilizingCss(hideSelectors: string[]): string {

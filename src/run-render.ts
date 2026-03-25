@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -12,11 +12,8 @@ import {
 import { createCaptureLogger } from './capture/logger.js';
 import type { ProgressReporter } from './capture/progress.js';
 import type {
-  CaptureAction,
   CaptureResult,
   CaptureScene,
-  CaptureTimelineScrollTarget,
-  CaptureTimelineSegment,
   MotionCurve,
   Viewport,
   WaitForCondition,
@@ -39,6 +36,12 @@ import {
   type SceneCaptureArtifact,
   shouldFailOnSceneClipProbe,
 } from './render-plan.js';
+import {
+  serializeAction,
+  serializeError,
+  serializeTimelineSegment,
+  writeJsonFile,
+} from './serialize.js';
 
 export interface RenderOutputResult {
   name: string;
@@ -372,7 +375,7 @@ export async function runRenderCommand(
         artifactMetrics,
       });
 
-      await writeManifest(output.manifestPath, manifest);
+      await writeJsonFile(output.manifestPath, manifest);
       await logger.info('render.complete', 'Project render finished', {
         outputName: output.name,
         outPath: output.outPath,
@@ -436,7 +439,7 @@ export async function runRenderCommand(
           message: manifest.error?.message,
         },
       );
-      await writeManifest(output.manifestPath, manifest);
+      await writeJsonFile(output.manifestPath, manifest);
 
       if (isCancelled) {
         summaryOutputs.push({
@@ -451,7 +454,7 @@ export async function runRenderCommand(
           warnings,
         });
         overallStatus = 'cancelled';
-        await writeSummaryManifest(
+        await writeJsonFile(
           project.summaryManifestPath,
           buildRenderSummaryManifest({
             status: overallStatus,
@@ -494,7 +497,7 @@ export async function runRenderCommand(
   }
 
   const finishedAt = new Date();
-  await writeSummaryManifest(
+  await writeJsonFile(
     project.summaryManifestPath,
     buildRenderSummaryManifest({
       status: overallStatus,
@@ -521,28 +524,6 @@ export async function runRenderCommand(
     summaryManifestPath: project.summaryManifestPath,
     outputs,
   };
-}
-
-async function writeManifest(
-  manifestPath: string,
-  manifest: RenderManifest,
-): Promise<void> {
-  await writeFile(
-    manifestPath,
-    `${JSON.stringify(manifest, null, 2)}\n`,
-    'utf8',
-  );
-}
-
-async function writeSummaryManifest(
-  manifestPath: string,
-  manifest: RenderSummaryManifest,
-): Promise<void> {
-  await writeFile(
-    manifestPath,
-    `${JSON.stringify(manifest, null, 2)}\n`,
-    'utf8',
-  );
 }
 
 function buildRenderManifest(input: {
@@ -647,89 +628,5 @@ function buildRenderSummaryManifest(input: {
       summaryManifestPath: input.summaryManifestPath,
     },
     outputs: input.outputs,
-  };
-}
-
-function serializeAction(action: CaptureAction): Record<string, unknown> {
-  switch (action.kind) {
-    case 'wait':
-      return { kind: action.kind, ms: action.ms };
-    case 'click':
-    case 'hover':
-      return { kind: action.kind, selector: action.selector };
-    case 'press':
-      return { kind: action.kind, key: action.key };
-    case 'type':
-      return {
-        kind: action.kind,
-        selector: action.selector,
-        clear: action.clear,
-        textLength: action.text.length,
-      };
-    case 'scroll-to':
-      return {
-        kind: action.kind,
-        selector: action.selector,
-        block: action.block,
-      };
-  }
-}
-
-function serializeTimelineSegment(
-  segment: CaptureTimelineSegment,
-): Record<string, unknown> {
-  switch (segment.kind) {
-    case 'pause':
-      return {
-        kind: segment.kind,
-        durationSeconds: segment.durationSeconds,
-      };
-    case 'scroll':
-      return {
-        kind: segment.kind,
-        duration: segment.duration,
-        motion: segment.motion,
-        target: serializeTimelineTarget(segment.target),
-      };
-    case 'action':
-      return {
-        kind: segment.kind,
-        holdAfterSeconds: segment.holdAfterSeconds,
-        action: serializeAction(segment.action),
-      };
-  }
-}
-
-function serializeTimelineTarget(
-  target: CaptureTimelineScrollTarget,
-): Record<string, unknown> {
-  switch (target.kind) {
-    case 'bottom':
-      return { kind: target.kind };
-    case 'absolute':
-      return { kind: target.kind, top: target.top };
-    case 'relative':
-      return { kind: target.kind, delta: target.delta };
-    case 'selector':
-      return {
-        kind: target.kind,
-        selector: target.selector,
-        block: target.block,
-      };
-  }
-}
-
-function serializeError(error: unknown): RenderManifest['error'] {
-  if (error instanceof Error) {
-    return {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-    };
-  }
-
-  return {
-    name: 'Error',
-    message: typeof error === 'string' ? error : 'Unknown error',
   };
 }

@@ -51,7 +51,7 @@ export function buildScrollFrames(options: {
     const easedProgress =
       options.motion === 'linear' ? progress : easeInOutSine(progress);
 
-    return Number((options.maxScroll * easedProgress).toFixed(3));
+    return Math.round(options.maxScroll * easedProgress * 1000) / 1000 || 0;
   });
 }
 

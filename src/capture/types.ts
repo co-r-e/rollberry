@@ -148,10 +148,6 @@ export type FinalVideoEncodingSettings =
       crf: number;
     };
 
-export interface ResolvedCaptureOptions extends CaptureOptions {
-  durationSeconds: number;
-}
-
 export interface PageMetrics {
   scrollHeight: number;
   viewportHeight: number;

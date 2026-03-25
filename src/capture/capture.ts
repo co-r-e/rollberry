@@ -2,6 +2,7 @@ import { unlink, writeFile } from 'node:fs/promises';
 
 import type { Page } from 'playwright';
 
+import { serializeAction, serializeTimelineSegment } from '../serialize.js';
 import {
   executeCaptureAction,
   executeSceneActions,
@@ -29,7 +30,7 @@ import type {
   CaptureResult,
   CaptureScene,
   CaptureTimelineScrollTarget,
-  CaptureTimelineSegment,
+  NonEmptyArray,
   PageCaptureResult,
 } from './types.js';
 import {
@@ -37,7 +38,6 @@ import {
   ensureDirectory,
   ensureParentDirectory,
   fileExists,
-  measurePage,
   sanitizeUrl,
   waitForAnimationFrames,
 } from './utils.js';
@@ -225,21 +225,22 @@ function buildCaptureJob(options: CaptureOptions): CaptureJob {
     throw new Error('At least one URL is required.');
   }
 
-  const scenes = options.urls.map((url, index) => ({
-    url,
-    duration: options.duration,
-    motion: options.motion,
-    waitFor: options.waitFor,
-    hideSelectors: options.hideSelectors,
-    holdAfterSeconds:
-      index === options.urls.length - 1 ? 0 : options.pageGapSeconds,
-    actions: [],
-    timeline: [],
-  }));
-  const [firstScene, ...remainingScenes] = scenes;
+  const scenes = options.urls.map(
+    (url, index): CaptureScene => ({
+      url,
+      duration: options.duration,
+      motion: options.motion,
+      waitFor: options.waitFor,
+      hideSelectors: options.hideSelectors,
+      holdAfterSeconds:
+        index === options.urls.length - 1 ? 0 : options.pageGapSeconds,
+      actions: [],
+      timeline: [],
+    }),
+  ) as NonEmptyArray<CaptureScene>;
 
   return {
-    scenes: [firstScene, ...remainingScenes],
+    scenes,
     outPath: options.outPath,
     format: 'mp4',
     viewport: options.viewport,
@@ -462,12 +463,7 @@ async function captureLegacyScrollFrames(input: {
     }, scrollTop);
     await waitForAnimationFrames(page);
 
-    const frame = await page.screenshot({
-      type: 'png',
-      scale: 'css',
-      animations: 'disabled',
-      caret: 'hide',
-    });
+    const frame = await captureFrame(page);
     lastFrame = frame;
 
     await writeFrameToOutput({
@@ -792,12 +788,14 @@ async function writeFrameToOutput(input: {
 }): Promise<void> {
   const { encoder, frame, debugFramesDir, frameNumber } = input;
 
-  if (debugFramesDir) {
-    const fileName = `${String(frameNumber).padStart(5, '0')}.png`;
-    await writeFile(`${debugFramesDir}/${fileName}`, frame);
-  }
+  const debugWrite = debugFramesDir
+    ? writeFile(
+        `${debugFramesDir}/${String(frameNumber).padStart(5, '0')}.png`,
+        frame,
+      )
+    : undefined;
 
-  await encoder.writeFrame(frame);
+  await Promise.all([debugWrite, encoder.writeFrame(frame)]);
 }
 
 async function writeRepeatedFrames(input: {
@@ -839,25 +837,33 @@ async function measureTimelineMetrics(page: Page): Promise<{
   scrollTop: number;
   truncated: boolean;
 }> {
-  const metrics = await measurePage(page);
-  const scrollTop = await page.evaluate(
-    () => window.scrollY || window.pageYOffset || 0,
-  );
-  const truncated = metrics.scrollHeight > PREFLIGHT_MAX_SCROLL_HEIGHT;
-  const scrollHeight = Math.min(
-    metrics.scrollHeight,
-    PREFLIGHT_MAX_SCROLL_HEIGHT,
-  );
+  const raw = await page.evaluate(() => {
+    const body = document.body;
+    const root = document.documentElement;
+    const scrollHeight = Math.max(
+      body?.scrollHeight ?? 0,
+      body?.offsetHeight ?? 0,
+      root.scrollHeight,
+      root.offsetHeight,
+      root.clientHeight,
+    );
+    const viewportHeight = window.innerHeight || root.clientHeight;
+    return {
+      scrollHeight,
+      viewportHeight,
+      scrollTop: window.scrollY || window.pageYOffset || 0,
+    };
+  });
+
+  const truncated = raw.scrollHeight > PREFLIGHT_MAX_SCROLL_HEIGHT;
+  const scrollHeight = Math.min(raw.scrollHeight, PREFLIGHT_MAX_SCROLL_HEIGHT);
+  const maxScroll = Math.max(0, scrollHeight - raw.viewportHeight);
 
   return {
     scrollHeight,
-    viewportHeight: metrics.viewportHeight,
-    maxScroll: Math.max(0, scrollHeight - metrics.viewportHeight),
-    scrollTop: clamp(
-      scrollTop,
-      0,
-      Math.max(0, scrollHeight - metrics.viewportHeight),
-    ),
+    viewportHeight: raw.viewportHeight,
+    maxScroll,
+    scrollTop: clamp(raw.scrollTop, 0, maxScroll),
     truncated,
   };
 }
@@ -910,50 +916,6 @@ async function resolveTimelineTargetScrollTop(
   }
 }
 
-function serializeTimelineSegment(
-  segment: CaptureTimelineSegment,
-): Record<string, unknown> {
-  switch (segment.kind) {
-    case 'pause':
-      return {
-        kind: segment.kind,
-        durationSeconds: segment.durationSeconds,
-      };
-    case 'scroll':
-      return {
-        kind: segment.kind,
-        duration: segment.duration,
-        motion: segment.motion,
-        target: serializeTimelineTarget(segment.target),
-      };
-    case 'action':
-      return {
-        kind: segment.kind,
-        holdAfterSeconds: segment.holdAfterSeconds,
-        action: serializeAction(segment.action),
-      };
-  }
-}
-
-function serializeTimelineTarget(
-  target: CaptureTimelineScrollTarget,
-): Record<string, unknown> {
-  switch (target.kind) {
-    case 'bottom':
-      return { kind: target.kind };
-    case 'absolute':
-      return { kind: target.kind, top: target.top };
-    case 'relative':
-      return { kind: target.kind, delta: target.delta };
-    case 'selector':
-      return {
-        kind: target.kind,
-        selector: target.selector,
-        block: target.block,
-      };
-  }
-}
-
 async function cleanupPartialOutput(outPath: string): Promise<void> {
   try {
     await unlink(outPath);
@@ -993,33 +955,6 @@ function shouldWriteHoldAfterScene(
   return job.includeHoldAfterFinalScene === true;
 }
 
-function serializeAction(
-  action: CaptureScene['actions'][number],
-): Record<string, unknown> {
-  switch (action.kind) {
-    case 'wait':
-      return { kind: action.kind, ms: action.ms };
-    case 'press':
-      return { kind: action.kind, key: action.key };
-    case 'click':
-    case 'hover':
-      return { kind: action.kind, selector: action.selector };
-    case 'type':
-      return {
-        kind: action.kind,
-        selector: action.selector,
-        textLength: action.text.length,
-        clear: action.clear,
-      };
-    case 'scroll-to':
-      return {
-        kind: action.kind,
-        selector: action.selector,
-        block: action.block,
-      };
-  }
-}
-
 async function writeGapFrames(input: {
   encoder: VideoEncoder;
   frame: Buffer;
@@ -1036,14 +971,13 @@ async function writeGapFrames(input: {
     return 0;
   }
 
-  for (let i = 0; i < gapFrameCount; i++) {
-    if (debugFramesDir) {
-      const fileName = `${String(frameOffset + i).padStart(5, '0')}.png`;
-      await writeFile(`${debugFramesDir}/${fileName}`, frame);
-    }
-
-    await encoder.writeFrame(frame);
-  }
+  await writeRepeatedFrames({
+    encoder,
+    frame,
+    frameCount: gapFrameCount,
+    debugFramesDir,
+    frameOffset,
+  });
 
   return gapFrameCount;
 }
