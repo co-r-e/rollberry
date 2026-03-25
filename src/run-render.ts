@@ -217,7 +217,7 @@ export async function runRenderCommand(
       timeoutMs: project.timeoutMs,
       tempDir,
     });
-    const startedAt = new Date();
+    const outputStartedAt = new Date();
     let capture: CaptureResult | undefined;
     let captureMetrics: RenderCaptureMetrics | undefined;
     let artifactMetrics: RenderArtifactMetrics | undefined;
@@ -365,7 +365,7 @@ export async function runRenderCommand(
         timeoutMs: project.timeoutMs,
         scenes: project.scenes,
         output,
-        startedAt,
+        startedAt: outputStartedAt,
         finishedAt,
         warnings,
         videoCreated: true,
@@ -411,7 +411,7 @@ export async function runRenderCommand(
         timeoutMs: project.timeoutMs,
         scenes: project.scenes,
         output,
-        startedAt,
+        startedAt: outputStartedAt,
         finishedAt,
         warnings,
         videoCreated: capture !== undefined,
@@ -464,7 +464,6 @@ export async function runRenderCommand(
             outputs: summaryOutputs,
           }),
         );
-        await logger.close();
         throw error;
       }
 

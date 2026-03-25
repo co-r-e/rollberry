@@ -374,11 +374,7 @@ function buildComposeFfmpegArgs(options: {
     transition: options.transition,
   });
 
-  if (filterComplex) {
-    args.push('-filter_complex', filterComplex, '-map', '[video_out]');
-  } else {
-    args.push('-map', '0:v:0');
-  }
+  args.push('-filter_complex', filterComplex, '-map', '[video_out]');
 
   if (audioInputIndex !== undefined) {
     const audio = options.audio;
@@ -414,7 +410,7 @@ function buildComposeFilterComplex(options: {
   clips: [ComposedVideoClip, ...ComposedVideoClip[]];
   subtitles?: CaptureSubtitleTrack;
   transition?: CaptureTransition;
-}): string | undefined {
+}): string {
   const segments: string[] = [];
   const crossfade =
     options.transition?.kind === 'crossfade' && options.clips.length > 1
@@ -466,10 +462,6 @@ function buildComposeFilterComplex(options: {
         options.transition.durationSeconds,
       )}`,
     );
-  }
-
-  if (postFilters.length === 0) {
-    return segments.length > 0 ? segments.join(';') : undefined;
   }
 
   segments.push(`${currentLabel}${postFilters.join(',')}[video_out]`);

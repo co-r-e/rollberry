@@ -417,7 +417,6 @@ function parseOutput(input: {
   const audio = parseAudioTrack(
     rawOutput.audio,
     projectDir,
-    format,
     `outputs[${index}].audio`,
   );
   const subtitles = parseSubtitleTrack(
@@ -877,15 +876,10 @@ function inferOutputFormatFromPath(path: string): OutputFormat | undefined {
 function parseAudioTrack(
   rawAudio: unknown,
   projectDir: string,
-  format: OutputFormat,
   fieldPath: string,
 ): CaptureAudioTrack | undefined {
   if (rawAudio === undefined) {
     return undefined;
-  }
-
-  if (format !== 'mp4' && format !== 'webm') {
-    throw new CliError(`${fieldPath} is not supported for format "${format}".`);
   }
 
   if (!isRecord(rawAudio)) {
